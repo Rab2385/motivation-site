@@ -6,6 +6,7 @@ import '../domain/progression.dart';
 import '../models/completion.dart';
 import '../models/proposal.dart';
 import '../models/recurrence_rule.dart';
+import '../models/reward.dart';
 import '../models/task_category.dart';
 import '../models/task_definition.dart';
 import '../models/task_occurrence.dart';
@@ -44,12 +45,14 @@ class PlanService {
     required List<TaskOccurrence> occurrences,
     required List<WeekTemplate> templates,
     required List<Proposal> proposals,
+    required List<Reward> rewards,
   })  : _db = database,
         _categories = categories,
         _definitions = definitions,
         _occurrences = occurrences,
         _templates = templates,
-        _proposals = proposals;
+        _proposals = proposals,
+        _rewards = rewards;
 
   final MotivationDatabase _db;
 
@@ -60,6 +63,7 @@ class PlanService {
   final List<TaskOccurrence> _occurrences;
   final List<WeekTemplate> _templates;
   final List<Proposal> _proposals;
+  final List<Reward> _rewards;
 
   DateTime _now() => DateTime.now();
 
@@ -517,6 +521,66 @@ class PlanService {
   Future<void> deleteCategory(String id) async {
     _categories.removeWhere((c) => c.id == id);
     await _db.deleteCategory(id);
+  }
+
+  // ---- Rewards ------------------------------------------------------
+
+  Future<void> addReward({
+    required String title,
+    required String description,
+    required String iconKey,
+    required int requiredLevel,
+  }) async {
+    final reward = Reward(
+      id: newId('rew'),
+      title: title.trim(),
+      description: description.trim(),
+      iconKey: iconKey,
+      requiredLevel: requiredLevel < 1 ? 1 : requiredLevel,
+      createdAt: _now(),
+    );
+    _rewards.add(reward);
+    await _db.saveReward(reward);
+  }
+
+  Future<void> updateReward(
+    String id, {
+    String? title,
+    String? description,
+    String? iconKey,
+    int? requiredLevel,
+  }) async {
+    final index = _rewards.indexWhere((r) => r.id == id);
+    if (index == -1) return;
+    final updated = _rewards[index].copyWith(
+      title: title?.trim(),
+      description: description?.trim(),
+      iconKey: iconKey,
+      requiredLevel: requiredLevel,
+    );
+    _rewards[index] = updated;
+    await _db.saveReward(updated);
+  }
+
+  Future<void> deleteReward(String id) async {
+    _rewards.removeWhere((r) => r.id == id);
+    await _db.deleteReward(id);
+  }
+
+  /// Records that the user redeemed [id]. Allowed only when the reward is
+  /// unlocked at [currentLevel]. There is no XP cost.
+  Future<bool> redeemReward(String id, int currentLevel) async {
+    final index = _rewards.indexWhere((r) => r.id == id);
+    if (index == -1) return false;
+    final reward = _rewards[index];
+    if (!reward.isUnlocked(currentLevel)) return false;
+    final updated = reward.copyWith(
+      redeemedCount: reward.redeemedCount + 1,
+      lastRedeemedAt: _now(),
+    );
+    _rewards[index] = updated;
+    await _db.saveReward(updated);
+    return true;
   }
 
   // ---- Proposals (AI seam) ------------------------------------------------

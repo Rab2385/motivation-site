@@ -9,6 +9,7 @@ import '../domain/streaks.dart';
 import '../domain/workload.dart';
 import '../models/proposal.dart';
 import '../models/recurrence_rule.dart';
+import '../models/reward.dart';
 import '../models/task_category.dart';
 import '../models/task_definition.dart';
 import '../models/task_occurrence.dart';
@@ -32,6 +33,7 @@ class MotivationController extends ChangeNotifier {
   final List<TaskOccurrence> _occurrences = [];
   final List<WeekTemplate> _templates = [];
   final List<Proposal> _proposals = [];
+  final List<Reward> _rewards = [];
   final Map<String, DateTime> _achievementUnlocks = {};
 
   bool _darkMode = true;
@@ -41,6 +43,10 @@ class MotivationController extends ChangeNotifier {
 
   /// Achievement ids unlocked since the UI last cleared them (toast queue).
   final List<String> _pendingAchievementToasts = [];
+
+  /// Reward ids that crossed their unlock level since the UI last checked.
+  final List<String> _pendingRewardToasts = [];
+  Set<String> _rewardsUnlockedSnapshot = {};
 
   bool _ready = false;
   bool get isReady => _ready;
@@ -65,6 +71,9 @@ class MotivationController extends ChangeNotifier {
     _proposals
       ..clear()
       ..addAll(snapshot.proposals);
+    _rewards
+      ..clear()
+      ..addAll(snapshot.rewards);
     _achievementUnlocks
       ..clear()
       ..addAll(snapshot.achievementUnlocks);
@@ -83,6 +92,15 @@ class MotivationController extends ChangeNotifier {
       }
     }
 
+    final rewardsSeeded = snapshot.settings['rewardsSeeded'] as bool? ?? false;
+    if (_rewards.isEmpty && !rewardsSeeded) {
+      for (final reward in Reward.defaults(DateTime.now())) {
+        _rewards.add(reward);
+        await _database.saveReward(reward);
+      }
+      await _database.saveSetting('rewardsSeeded', true);
+    }
+
     _plan = PlanService(
       database: _database,
       categories: _categories,
@@ -90,9 +108,11 @@ class MotivationController extends ChangeNotifier {
       occurrences: _occurrences,
       templates: _templates,
       proposals: _proposals,
+      rewards: _rewards,
     );
 
     await _plan.refreshMaterialisation();
+    _rewardsUnlockedSnapshot = _currentlyUnlockedRewardIds();
     await _runRollover();
 
     _ready = true;
@@ -174,6 +194,44 @@ class MotivationController extends ChangeNotifier {
     return toasts;
   }
 
+  // ---- Rewards --------------------------------------------------------
+
+  /// All rewards, unlocked first (nearest required level next), then locked
+  /// by ascending required level.
+  List<Reward> get rewards {
+    final level = levelProgress.level;
+    final list = [..._rewards]..sort((a, b) {
+        final aUnlocked = a.isUnlocked(level);
+        final bUnlocked = b.isUnlocked(level);
+        if (aUnlocked != bUnlocked) return aUnlocked ? -1 : 1;
+        return a.requiredLevel.compareTo(b.requiredLevel);
+      });
+    return List.unmodifiable(list);
+  }
+
+  List<Reward> get unlockedRewards =>
+      rewards.where((r) => r.isUnlocked(levelProgress.level)).toList();
+
+  bool rewardUnlocked(Reward reward) =>
+      reward.isUnlocked(levelProgress.level);
+
+  List<Reward> takeRewardToasts() {
+    final ids = List<String>.from(_pendingRewardToasts);
+    _pendingRewardToasts.clear();
+    return [
+      for (final id in ids)
+        ..._rewards.where((r) => r.id == id),
+    ];
+  }
+
+  Set<String> _currentlyUnlockedRewardIds() {
+    final level = levelProgress.level;
+    return {
+      for (final reward in _rewards)
+        if (reward.isUnlocked(level)) reward.id,
+    };
+  }
+
   /// All occurrences on [date], ordered: open first → category sort order →
   /// XP desc; completed / skipped collapse to the bottom.
   List<TaskOccurrence> occurrencesForDay(DateTime date) {
@@ -199,6 +257,25 @@ class MotivationController extends ChangeNotifier {
   }
 
   List<TaskOccurrence> get todaysQuests => occurrencesForDay(today);
+
+  int completedCountForDate(DateTime date) =>
+      occurrencesForDay(date).where((o) => o.isCompleted).length;
+
+  /// Completed-task count + awarded XP over the Mon–Sun week at [weekOffset]
+  /// (0 = this week, -1 = last week).
+  ({int tasks, int xp}) weekTotals(int weekOffset) {
+    var tasks = 0;
+    var xp = 0;
+    for (final day in weekDays(weekOffset)) {
+      for (final occurrence in occurrencesForDay(day)) {
+        final completion = occurrence.completion;
+        if (completion == null) continue;
+        tasks++;
+        xp += completion.awardedXp;
+      }
+    }
+    return (tasks: tasks, xp: xp);
+  }
 
   int get totalXp => statsSnapshot.totalXp;
 
@@ -497,6 +574,54 @@ class MotivationController extends ChangeNotifier {
     await _afterWrite();
   }
 
+  // ---- Rewards --------------------------------------------------------
+
+  Future<void> addReward({
+    required String title,
+    required String description,
+    required String iconKey,
+    required int requiredLevel,
+  }) async {
+    await _plan.addReward(
+      title: title,
+      description: description,
+      iconKey: iconKey,
+      requiredLevel: requiredLevel,
+    );
+    _rewardsUnlockedSnapshot = _currentlyUnlockedRewardIds();
+    await _afterWrite();
+  }
+
+  Future<void> updateReward(
+    String id, {
+    String? title,
+    String? description,
+    String? iconKey,
+    int? requiredLevel,
+  }) async {
+    await _plan.updateReward(
+      id,
+      title: title,
+      description: description,
+      iconKey: iconKey,
+      requiredLevel: requiredLevel,
+    );
+    _rewardsUnlockedSnapshot = _currentlyUnlockedRewardIds();
+    await _afterWrite();
+  }
+
+  Future<void> deleteReward(String id) async {
+    await _plan.deleteReward(id);
+    await _afterWrite();
+  }
+
+  /// Returns true if the reward was redeemed (it was unlocked).
+  Future<bool> redeemReward(String id) async {
+    final ok = await _plan.redeemReward(id, levelProgress.level);
+    await _afterWrite();
+    return ok;
+  }
+
   // ---- Proposals --------------------------------------------------------
 
   Future<void> approveProposal(String id) async {
@@ -541,13 +666,20 @@ class MotivationController extends ChangeNotifier {
     _occurrences.clear();
     _templates.clear();
     _proposals.clear();
+    _rewards.clear();
     _achievementUnlocks.clear();
     _categories.clear();
     for (final category in TaskCategory.defaults()) {
       _categories.add(category);
       await _database.saveCategory(category);
     }
+    for (final reward in Reward.defaults(DateTime.now())) {
+      _rewards.add(reward);
+      await _database.saveReward(reward);
+    }
+    await _database.saveSetting('rewardsSeeded', true);
     _dayTargetXp = List.of(defaultDayTargetXp);
+    _rewardsUnlockedSnapshot = _currentlyUnlockedRewardIds();
     notifyListeners();
   }
 
@@ -555,7 +687,15 @@ class MotivationController extends ChangeNotifier {
 
   Future<void> _afterWrite() async {
     await _checkAchievements();
+    _checkRewardUnlocks();
     notifyListeners();
+  }
+
+  void _checkRewardUnlocks() {
+    final now = _currentlyUnlockedRewardIds();
+    final fresh = now.difference(_rewardsUnlockedSnapshot);
+    _pendingRewardToasts.addAll(fresh);
+    _rewardsUnlockedSnapshot = now;
   }
 
   Future<void> _checkAchievements() async {

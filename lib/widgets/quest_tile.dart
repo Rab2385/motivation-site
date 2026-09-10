@@ -9,108 +9,121 @@ import 'task_editor_sheet.dart';
 
 /// One quest row. Tapping an open quest on the current day opens the complete
 /// sheet; the trailing menu handles edit / skip / move / copy / remove.
+///
+/// [flat] drops the card chrome so the row can sit inside a larger list card
+/// (the dashboard / today layout in the reference).
 class QuestTile extends StatelessWidget {
   const QuestTile({
     super.key,
     required this.controller,
     required this.occurrence,
+    this.flat = false,
+    this.showDivider = false,
   });
 
   final MotivationController controller;
   final TaskOccurrence occurrence;
+  final bool flat;
+  final bool showDivider;
+
+  void _onTap(BuildContext context) {
+    final canComplete = controller.canCompleteOn(occurrence.date);
+    if (occurrence.isSkipped) {
+      controller.unskipOccurrence(occurrence.id);
+    } else if (occurrence.isCompleted) {
+      if (canComplete) controller.undoComplete(occurrence.id);
+    } else if (canComplete) {
+      showCompleteQuestSheet(context, controller, occurrence);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final category = controller.categoryById(occurrence.categoryId);
-    final canComplete = controller.canCompleteOn(occurrence.date);
+    final theme = Theme.of(context);
     final done = occurrence.isFullyCompleted;
     final partial = occurrence.isCompleted && !done;
-    final theme = Theme.of(context);
+    final subtitle = occurrence.note.trim().isNotEmpty
+        ? occurrence.note.trim()
+        : category.name;
 
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () {
-          if (occurrence.isSkipped) {
-            controller.unskipOccurrence(occurrence.id);
-          } else if (occurrence.isCompleted) {
-            if (canComplete) controller.undoComplete(occurrence.id);
-          } else if (canComplete) {
-            showCompleteQuestSheet(context, controller, occurrence);
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
-          child: Row(
-            children: [
-              Container(
-                width: 6,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: category.color,
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-              const SizedBox(width: 12),
-              _StateIcon(done: done, partial: partial, skipped: occurrence.isSkipped),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      occurrence.title,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        decoration: occurrence.isSkipped
-                            ? TextDecoration.lineThrough
-                            : null,
-                        color: occurrence.isSkipped
-                            ? theme.disabledColor
-                            : null,
-                      ),
+    final row = InkWell(
+      borderRadius: BorderRadius.circular(flat ? 10 : 16),
+      onTap: () => _onTap(context),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(flat ? 4 : 14, 10, 4, 10),
+        child: Row(
+          children: [
+            _Check(done: done, partial: partial, skipped: occurrence.isSkipped),
+            const SizedBox(width: 12),
+            Container(width: 3, height: 34, decoration: BoxDecoration(
+              color: category.color.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(2),
+            )),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    occurrence.title,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      decoration:
+                          occurrence.isSkipped ? TextDecoration.lineThrough : null,
+                      color: occurrence.isSkipped
+                          ? AppTheme.textLow
+                          : (done ? AppTheme.textMid : AppTheme.textHigh),
                     ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Icon(category.icon, size: 13, color: category.color),
+                  ),
+                  const SizedBox(height: 1),
+                  Row(
+                    children: [
+                      if (occurrence.isRecurring) ...[
+                        const Icon(Icons.autorenew, size: 11, color: AppTheme.textLow),
                         const SizedBox(width: 4),
-                        Text(category.name, style: theme.textTheme.bodySmall),
-                        if (occurrence.isRecurring) ...[
-                          const SizedBox(width: 6),
-                          Icon(Icons.autorenew,
-                              size: 12, color: theme.hintColor),
-                        ],
-                        if (occurrence.isSkipped) ...[
-                          const SizedBox(width: 6),
-                          Text(AppText.plannedSkip,
-                              style: theme.textTheme.bodySmall),
-                        ],
                       ],
-                    ),
-                  ],
-                ),
+                      Flexible(
+                        child: Text(
+                          occurrence.isSkipped ? AppText.plannedSkip : subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTheme.quote.copyWith(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              _XpChip(
-                xp: occurrence.isCompleted
-                    ? occurrence.completion!.awardedXp
-                    : occurrence.xp,
-                muted: occurrence.isSkipped,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '+${occurrence.isCompleted ? occurrence.completion!.awardedXp : occurrence.xp} XP',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: occurrence.isSkipped ? AppTheme.textLow : AppTheme.goldBright,
               ),
-              _QuestMenu(controller: controller, occurrence: occurrence),
-            ],
-          ),
+            ),
+            _QuestMenu(controller: controller, occurrence: occurrence),
+          ],
         ),
       ),
     );
+
+    if (flat) {
+      return Container(
+        decoration: showDivider
+            ? const BoxDecoration(
+                border: Border(bottom: BorderSide(color: AppTheme.hairline)))
+            : null,
+        child: row,
+      );
+    }
+    return Card(child: row);
   }
 }
 
-class _StateIcon extends StatelessWidget {
-  const _StateIcon({
-    required this.done,
-    required this.partial,
-    required this.skipped,
-  });
+class _Check extends StatelessWidget {
+  const _Check({required this.done, required this.partial, required this.skipped});
 
   final bool done;
   final bool partial;
@@ -118,43 +131,28 @@ class _StateIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Color border = AppTheme.border;
+    Color fill = Colors.transparent;
+    Widget? mark;
     if (skipped) {
-      return Icon(Icons.remove_circle_outline, color: Theme.of(context).disabledColor);
+      mark = const Icon(Icons.remove, size: 15, color: AppTheme.textLow);
+    } else if (done) {
+      border = AppTheme.gold;
+      fill = AppTheme.gold;
+      mark = const Icon(Icons.check, size: 15, color: Color(0xFF231A05));
+    } else if (partial) {
+      border = AppTheme.gold;
+      mark = const Icon(Icons.timelapse, size: 14, color: AppTheme.gold);
     }
-    if (done) {
-      return const Icon(Icons.check_circle, color: AppTheme.successAccent);
-    }
-    if (partial) {
-      return const Icon(Icons.timelapse, color: AppTheme.xpAccent);
-    }
-    return Icon(Icons.circle_outlined, color: Theme.of(context).hintColor);
-  }
-}
-
-class _XpChip extends StatelessWidget {
-  const _XpChip({required this.xp, this.muted = false});
-
-  final int xp;
-  final bool muted;
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      width: 22,
+      height: 22,
       decoration: BoxDecoration(
-        color: (muted ? Theme.of(context).disabledColor : AppTheme.xpAccent)
-            .withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(10),
+        color: fill,
+        border: Border.all(color: border, width: 1.6),
+        borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(
-        '+$xp',
-        style: TextStyle(
-          fontWeight: FontWeight.w700,
-          color: muted
-              ? Theme.of(context).disabledColor
-              : AppTheme.xpAccent.withValues(alpha: 1),
-        ),
-      ),
+      child: mark,
     );
   }
 }
@@ -169,7 +167,7 @@ class _QuestMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final isPast = controller.isPast(occurrence.date);
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert, size: 20),
+      icon: const Icon(Icons.more_horiz, size: 19, color: AppTheme.textLow),
       onSelected: (value) async {
         switch (value) {
           case 'edit':

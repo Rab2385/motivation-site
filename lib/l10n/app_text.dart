@@ -4,11 +4,13 @@ class AppText {
   const AppText._();
 
   // App / navigation
-  static const appName = 'Motivation';
+  static const appName = 'Quest';
+  static const appTagline = 'Habit Tracker';
   static const dashboard = 'Dashboard';
   static const today = 'Heute';
   static const weekPlanning = 'Wochenplanung';
   static const habits = 'Gewohnheiten';
+  static const rewards = 'Belohnungen';
   static const statistics = 'Statistik';
   static const achievements = 'Erfolge';
   static const settings = 'Einstellungen';
@@ -94,6 +96,31 @@ class AppText {
   static const xpToNext = 'XP bis Level ';
   static const activeStreaks = 'Aktive Streaks';
   static const todaysProgress = 'Heute';
+  static const continueJourney = 'Weiter auf deiner Reise';
+  static const nextLevelIn = 'Nächstes Level in ';
+  static const todaysTasks = 'Heutige Aufgaben';
+  static const ofTasksDone = ' Aufgaben erledigt';
+  static const earnedToday = 'Heute verdient: ';
+  static const oneTaskToPerfect = 'Noch 1 Aufgabe bis zur perfekten Tagesbilanz!';
+  static const perfectDayReached = 'Perfekte Tagesbilanz erreicht!';
+  static const weekProgress = 'Wochenfortschritt';
+  static const totalTasksDone = ' erledigte Tasks gesamt';
+  static const youreDoingGreat = 'Du machst das großartig!';
+  static const doneTasks = 'Erledigte Tasks';
+  static const collectedXp = 'Gesammelte XP';
+  static const longestStreak = 'Längste Streak';
+
+  // Rewards
+  static const unlockedRewards = 'Freigeschaltete Belohnungen';
+  static const allRewards = 'Alle Belohnungen';
+  static const redeem = 'Einlösen';
+  static const rewardUnlockedYou = 'Du hast diese Belohnung freigeschaltet!';
+  static const unlockAtLevel = 'Freischaltung bei Level ';
+  static const newReward = 'Neue Belohnung';
+  static const requiredLevel = 'Benötigtes Level';
+  static const redeemedTimes = ' mal eingelöst';
+  static const rewardRedeemed = 'Belohnung eingelöst';
+  static const enjoyIt = 'Genieß es – du hast es dir verdient.';
 
   // Settings
   static const dayTargets = 'Tagesziele (XP)';

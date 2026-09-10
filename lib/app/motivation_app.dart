@@ -21,13 +21,11 @@ class _MotivationAppState extends State<MotivationApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    widget.controller.addListener(_onChange);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    widget.controller.removeListener(_onChange);
     super.dispose();
   }
 
@@ -38,23 +36,14 @@ class _MotivationAppState extends State<MotivationApp>
     }
   }
 
-  bool _darkMode = true;
-
-  void _onChange() {
-    if (widget.controller.darkMode != _darkMode) {
-      setState(() => _darkMode = widget.controller.darkMode);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    _darkMode = widget.controller.darkMode;
     return MaterialApp(
       title: AppText.appName,
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
+      theme: AppTheme.dark(),
       darkTheme: AppTheme.dark(),
-      themeMode: _darkMode ? ThemeMode.dark : ThemeMode.light,
+      themeMode: ThemeMode.dark,
       locale: const Locale('de'),
       supportedLocales: const [Locale('de')],
       localizationsDelegates: const [

@@ -20,11 +20,6 @@ class SettingsPage extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
-            SwitchListTile(
-              title: const Text(AppText.darkMode),
-              value: controller.darkMode,
-              onChanged: controller.setDarkMode,
-            ),
             const SectionHeader(AppText.dayTargets),
             for (var index = 0; index < 7; index++)
               _TargetRow(controller: controller, weekdayIndex: index),

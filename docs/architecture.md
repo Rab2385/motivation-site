@@ -1,8 +1,14 @@
-# Motivation – Architecture
+# Quest – Architecture
 
-Gamified, local-first habit tracker with a **Wochenplanung** (weekly planning)
-feature. Flutter Web (also builds for Windows). No account, no server, works
-fully offline. Persistence is Sembast over IndexedDB on web, a file on native.
+Gamified, local-first habit tracker ("Quest") with a **Wochenplanung** (weekly
+planning) feature. Flutter Web (also builds for Windows). No account, no
+server, works fully offline. Persistence is Sembast over IndexedDB on web, a
+file on native.
+
+The visual direction is a dark "midnight fantasy" theme with parchment-gold
+accents, a compass-rose mark, a painted mountain atmosphere (`AtmosphereBackground`,
+`GoldRing`, `CompassMark` in `lib/theme/atmosphere.dart`) and motivational
+German quotes (`lib/l10n/quotes.dart`). The Dart package is still `motivation`.
 
 This document is the source of truth for the domain model and the rules that
 were agreed during design. Implementation follows it; where code and doc
@@ -79,6 +85,15 @@ completion: Completion?
 ### 2.8 `Proposal` (AI seam – see §6)
 `id`, `createdAt`, `source`, `rationale`, `status`,
 `operations: List<PlanOperation>`.
+
+### 2.8a `Reward` (`lib/models/reward.dart`)
+A self-chosen treat that unlocks at a level. `id`, `title`, `description`,
+`iconKey`, `requiredLevel`, `redeemedCount`, `lastRedeemedAt`, `createdAt`.
+Unlocked when `currentLevel >= requiredLevel`. Redeeming has **no XP cost** –
+it just records that the user took the break (`redeemedCount++`). Seeded with
+five defaults on first run (`rewardsSeeded` settings flag). CRUD +
+`redeemReward` go through `PlanService`; the controller emits a toast when a
+reward crosses its unlock level.
 
 ### 2.9 `Achievement` unlock
 `achievementId`, `unlockedAt`. Definitions are code, unlocks are data.
@@ -237,13 +252,14 @@ narrow. Destinations:
 
 | DE label | Route content |
 | --- | --- |
-| Dashboard | today's quests summary, XP vs target, level ring, active streaks, 7-day week strip |
+| Dashboard | greeting + date + quote; hero card (level ring, XP bar, streak/total/encouragement chips, mountain atmosphere); "Heutige Aufgaben" card with per-row motivational subtitle and a "Heute verdient / perfekte Tagesbilanz" footer; "Freigeschaltete Belohnungen" card; "Wochenfortschritt" card (7-day bars + tasks/XP/streak mini-stats with week-over-week deltas) |
 | Heute | focused quest list for today, tap-to-complete with optional note/amount |
 | Wochenplanung | two-week board, per-day planned XP + workload bar, add/attach/copy/move, quota chips, template save/apply |
 | Gewohnheiten | recurring definitions: schedule, current/best streak, completion rate, pause/archive |
+| Belohnungen | reward grid, redeem when unlocked, add/edit; level-gated with progress bars |
 | Statistik | core charts |
 | Erfolge | achievement grid |
-| Einstellungen | day targets, categories, backup export/import, language, theme, clear data |
+| Einstellungen | day targets, categories, backup export/import, clear data |
 
 Quest list order everywhere: incomplete first → category sort order → XP
 desc; completed collapse to the bottom.

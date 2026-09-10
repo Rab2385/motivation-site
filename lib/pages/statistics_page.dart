@@ -171,7 +171,7 @@ class _BarChart extends StatelessWidget {
                               .colorScheme
                               .surfaceContainerHighest,
                           valueColor: AlwaysStoppedAnimation(
-                            colorFor?.call(entry.key) ?? AppTheme.seed,
+                            colorFor?.call(entry.key) ?? AppTheme.gold,
                           ),
                         ),
                       ),
