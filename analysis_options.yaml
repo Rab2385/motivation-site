@@ -4,3 +4,6 @@ linter:
   rules:
     avoid_print: true
     prefer_single_quotes: true
+    # The service intentionally takes clearly-named constructor params that
+    # forward to private fields.
+    prefer_initializing_formals: false
