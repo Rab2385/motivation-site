@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:sembast/sembast.dart';
 
 import '../models/proposal.dart';
+import '../models/reward.dart';
 import '../models/task_category.dart';
 import '../models/task_definition.dart';
 import '../models/task_occurrence.dart';
@@ -16,6 +17,7 @@ class DatabaseSnapshot {
     required this.occurrences,
     required this.templates,
     required this.proposals,
+    required this.rewards,
     required this.achievementUnlocks,
     required this.settings,
     required this.meta,
@@ -26,6 +28,7 @@ class DatabaseSnapshot {
   final List<TaskOccurrence> occurrences;
   final List<WeekTemplate> templates;
   final List<Proposal> proposals;
+  final List<Reward> rewards;
 
   /// achievementId -> unlockedAt.
   final Map<String, DateTime> achievementUnlocks;
@@ -52,6 +55,7 @@ class MotivationDatabase {
   final _occurrences = stringMapStoreFactory.store('occurrences');
   final _templates = stringMapStoreFactory.store('week_templates');
   final _proposals = stringMapStoreFactory.store('proposals');
+  final _rewards = stringMapStoreFactory.store('rewards');
   final _achievements = stringMapStoreFactory.store('achievement_unlocks');
   final _settings = StoreRef<String, Object?>('settings');
   final _meta = StoreRef<String, Object?>('meta');
@@ -89,6 +93,11 @@ class MotivationDatabase {
         .map((r) => Proposal.fromMap(r.value))
         .toList();
 
+    final rewards = (await _rewards.find(db))
+        .map((r) => Reward.fromMap(r.value))
+        .toList()
+      ..sort((a, b) => a.requiredLevel.compareTo(b.requiredLevel));
+
     final achievementUnlocks = <String, DateTime>{};
     for (final record in await _achievements.find(db)) {
       final at = record.value['unlockedAt'] as String?;
@@ -108,11 +117,20 @@ class MotivationDatabase {
       occurrences: occurrences,
       templates: templates,
       proposals: proposals,
+      rewards: rewards,
       achievementUnlocks: achievementUnlocks,
       settings: settings,
       meta: meta,
     );
   }
+
+  // ---- Rewards ------------------------------------------------------
+
+  Future<void> saveReward(Reward reward) async =>
+      _rewards.record(reward.id).put(await _db, reward.toMap());
+
+  Future<void> deleteReward(String id) async =>
+      _rewards.record(id).delete(await _db);
 
   // ---- Categories ---------------------------------------------------------
 
@@ -199,6 +217,7 @@ class MotivationDatabase {
       'occurrences': await dump(_occurrences),
       'week_templates': await dump(_templates),
       'proposals': await dump(_proposals),
+      'rewards': await dump(_rewards),
       'achievement_unlocks': {
         for (final r in await _achievements.find(db)) r.key: r.value,
       },
@@ -219,6 +238,7 @@ class MotivationDatabase {
       await _occurrences.delete(txn);
       await _templates.delete(txn);
       await _proposals.delete(txn);
+      await _rewards.delete(txn);
       await _achievements.delete(txn);
       await _settings.delete(txn);
       await _meta.delete(txn);
@@ -239,6 +259,7 @@ class MotivationDatabase {
       await restoreList(_occurrences, data['occurrences'], 'id');
       await restoreList(_templates, data['week_templates'], 'id');
       await restoreList(_proposals, data['proposals'], 'id');
+      await restoreList(_rewards, data['rewards'], 'id');
 
       for (final entry
           in (data['achievement_unlocks'] as Map? ?? const {}).entries) {
@@ -263,6 +284,7 @@ class MotivationDatabase {
       await _occurrences.delete(txn);
       await _templates.delete(txn);
       await _proposals.delete(txn);
+      await _rewards.delete(txn);
       await _achievements.delete(txn);
       await _settings.delete(txn);
       await _meta.delete(txn);

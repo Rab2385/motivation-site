@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:motivation/data/motivation_database.dart';
 import 'package:motivation/models/proposal.dart';
 import 'package:motivation/models/recurrence_rule.dart';
+import 'package:motivation/models/reward.dart';
 import 'package:motivation/models/task_category.dart';
 import 'package:motivation/models/task_definition.dart';
 import 'package:motivation/models/task_occurrence.dart';
@@ -17,6 +18,7 @@ void main() {
   late List<TaskOccurrence> occurrences;
   late List<WeekTemplate> templates;
   late List<Proposal> proposals;
+  late List<Reward> rewards;
   late PlanService plan;
 
   final monday = weekStart(DateTime.now()).add(const Duration(days: 7));
@@ -29,6 +31,7 @@ void main() {
     occurrences = [];
     templates = [];
     proposals = [];
+    rewards = [];
     plan = PlanService(
       database: db,
       categories: categories,
@@ -36,6 +39,7 @@ void main() {
       occurrences: occurrences,
       templates: templates,
       proposals: proposals,
+      rewards: rewards,
     );
   });
 
@@ -229,6 +233,37 @@ void main() {
           templateId: template.id, weekStartDate: monday);
       expect(result.added, 0);
       expect(result.skipped, 1);
+    });
+  });
+
+  group('rewards', () {
+    test('redeem is blocked until the reward is unlocked', () async {
+      await plan.addReward(
+        title: 'Gaming',
+        description: '',
+        iconKey: 'game',
+        requiredLevel: 4,
+      );
+      final id = rewards.single.id;
+
+      expect(await plan.redeemReward(id, 1), isFalse);
+      expect(rewards.single.redeemedCount, 0);
+
+      expect(await plan.redeemReward(id, 4), isTrue);
+      expect(rewards.single.redeemedCount, 1);
+      expect(rewards.single.lastRedeemedAt, isNotNull);
+    });
+
+    test('reward survives a database round-trip', () async {
+      await plan.addReward(
+        title: 'Kaffee',
+        description: 'Auszeit',
+        iconKey: 'coffee',
+        requiredLevel: 1,
+      );
+      final reloaded = await db.loadAll();
+      expect(reloaded.rewards.single.title, 'Kaffee');
+      expect(reloaded.rewards.single.requiredLevel, 1);
     });
   });
 
