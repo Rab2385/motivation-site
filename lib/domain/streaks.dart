@@ -31,14 +31,18 @@ class StreakInfo {
   final String progressLabel;
 }
 
-/// One forgiven miss; a second consecutive miss breaks the streak.
-const int _graceLimit = 1;
+/// Consecutive misses tolerated before a streak breaks. Set per call from
+/// [computeStreak]'s `graceLimit` (Streak-Schutz on = 1, off = 0). The UI
+/// runs on a single isolate, so a call-scoped global is safe here.
+int _graceLimit = 1;
 
 StreakInfo computeStreak({
   required TaskDefinition definition,
   required List<TaskOccurrence> occurrences,
   required DateTime today,
+  int graceLimit = 1,
 }) {
+  _graceLimit = graceLimit;
   final mine = occurrences
       .where((o) => o.sourceDefinitionId == definition.id)
       .toList();

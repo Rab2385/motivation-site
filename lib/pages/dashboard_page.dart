@@ -95,7 +95,7 @@ class _GreetingHeader extends StatelessWidget {
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontSize: 30, fontWeight: FontWeight.w600)),
               const SizedBox(height: 4),
-              const Text('Disziplin heute. Ein stärkeres Ich morgen.',
+              const Text(AppText.dashboardSubline,
                   style: TextStyle(color: AppTheme.textMid)),
             ],
           ),
@@ -152,25 +152,26 @@ class _HeroCard extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            Positioned.fill(
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: FractionallySizedBox(
-                  widthFactor: 0.6,
-                  child: ShaderMask(
-                    shaderCallback: (rect) => const LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: [Colors.transparent, Colors.white],
-                      stops: [0.0, 0.6],
-                    ).createShader(rect),
-                    blendMode: BlendMode.dstIn,
-                    child: const AtmosphereBackground(
-                        glowAlignment: Alignment(0.5, -0.1)),
+            if (controller.showAtmosphere)
+              Positioned.fill(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FractionallySizedBox(
+                    widthFactor: 0.62,
+                    child: ShaderMask(
+                      shaderCallback: (rect) => const LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [Colors.transparent, Colors.white],
+                        stops: [0.0, 0.55],
+                      ).createShader(rect),
+                      blendMode: BlendMode.dstIn,
+                      child: const AtmosphereBackground(
+                          glowAlignment: Alignment(0.5, -0.1)),
+                    ),
                   ),
                 ),
               ),
-            ),
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -179,24 +180,29 @@ class _HeroCard extends StatelessWidget {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      LevelRing(progress: progress),
+                      CompassMedallion(fraction: progress.fraction, size: 96),
                       const SizedBox(width: 20),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(AppText.continueJourney,
+                            Text('${AppText.level} ${progress.level}',
                                 style: Theme.of(context)
                                     .textTheme
                                     .headlineSmall
-                                    ?.copyWith(fontSize: 20)),
+                                    ?.copyWith(fontSize: 22)),
+                            const SizedBox(height: 2),
+                            Text(AppText.continueJourney,
+                                style: const TextStyle(
+                                    color: AppTheme.textMid, fontSize: 12.5)),
                             const SizedBox(height: 12),
                             XpBar(progress: progress),
                             const SizedBox(height: 8),
                             Row(
                               children: [
-                                Text('XP ${progress.xpIntoLevel} / '
-                                    '${progress.xpForThisLevel}',
+                                Text(
+                                    '${progress.xpIntoLevel} / '
+                                    '${progress.xpForThisLevel} XP',
                                     style: const TextStyle(
                                         color: AppTheme.goldBright,
                                         fontWeight: FontWeight.w700)),
@@ -222,16 +228,18 @@ class _HeroCard extends StatelessWidget {
                       StatChip(
                         icon: Icons.local_fire_department,
                         iconColor: AppTheme.streakAccent,
-                        label: 'Streak: ${stats.bestCurrentStreak} Tage',
+                        label:
+                            '${stats.bestCurrentStreak}${AppText.daysStreak}',
                       ),
                       StatChip(
                         icon: Icons.emoji_events_outlined,
                         label:
-                            '${stats.totalCompletions}${AppText.totalTasksDone}',
+                            '${stats.totalCompletions}${AppText.tasksDoneShort}',
                       ),
-                      const StatChip(
-                        icon: Icons.star_border,
-                        label: AppText.youreDoingGreat,
+                      StatChip(
+                        icon: Icons.card_giftcard,
+                        label:
+                            '${controller.unlockedRewards.length}${AppText.unlockedRewardsChip}',
                       ),
                     ],
                   ),

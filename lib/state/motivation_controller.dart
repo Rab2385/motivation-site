@@ -41,6 +41,20 @@ class MotivationController extends ChangeNotifier {
   String _lastRolloverKey = '';
   final Set<String> _dismissedOverloadHints = {};
 
+  // Gamification / app settings (Einstellungen).
+  double _xpMultiplier = 1.0;
+  LevelCurve _levelCurve = LevelCurve.standard;
+  int _perfectDayBonus = 50;
+  bool _streakProtection = true;
+  bool _dailyReminder = false;
+  String _reminderTime = '09:00';
+  bool _motivationMessages = true;
+  bool _showAtmosphere = true;
+
+  /// dateKey of the last day we already handed out a perfect-day toast for.
+  String _lastPerfectToastKey = '';
+  bool _pendingPerfectToast = false;
+
   /// Achievement ids unlocked since the UI last cleared them (toast queue).
   final List<String> _pendingAchievementToasts = [];
 
@@ -78,11 +92,23 @@ class MotivationController extends ChangeNotifier {
       ..clear()
       ..addAll(snapshot.achievementUnlocks);
 
-    _darkMode = snapshot.settings['darkMode'] as bool? ?? true;
-    final storedTargets = snapshot.settings['dayTargetXp'];
+    final settings = snapshot.settings;
+    _darkMode = settings['darkMode'] as bool? ?? true;
+    final storedTargets = settings['dayTargetXp'];
     if (storedTargets is List && storedTargets.length == 7) {
       _dayTargetXp = [for (final t in storedTargets) (t as num).toInt()];
     }
+    _xpMultiplier =
+        (settings['xpMultiplier'] as num?)?.toDouble().clamp(0.1, 5.0) ?? 1.0;
+    _levelCurve = LevelCurve.fromName(settings['levelCurve'] as String?);
+    _perfectDayBonus =
+        (settings['perfectDayBonus'] as num?)?.toInt().clamp(0, 500) ?? 50;
+    _streakProtection = settings['streakProtection'] as bool? ?? true;
+    _dailyReminder = settings['dailyReminder'] as bool? ?? false;
+    _reminderTime = settings['reminderTime'] as String? ?? '09:00';
+    _motivationMessages = settings['motivationMessages'] as bool? ?? true;
+    _showAtmosphere = settings['showAtmosphere'] as bool? ?? true;
+    _lastPerfectToastKey = settings['lastPerfectToastKey'] as String? ?? '';
     _lastRolloverKey = snapshot.settings['lastRolloverKey'] as String? ?? '';
 
     if (_categories.isEmpty) {
@@ -178,6 +204,19 @@ class MotivationController extends ChangeNotifier {
   List<TaskDefinition> get quotaDefinitions => _definitions
       .where((d) => d.isActive && d.recurrence.kind == RecurrenceKind.timesPerWeek)
       .toList();
+
+  /// Future one-off tasks (no definition), for the "Einmalig" habits filter.
+  List<TaskOccurrence> get upcomingOneOffs {
+    final list = _occurrences
+        .where((o) =>
+            o.sourceDefinitionId == null &&
+            !o.isCompleted &&
+            !o.isSkipped &&
+            !o.date.isBefore(today))
+        .toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+    return list;
+  }
 
   List<Proposal> get pendingProposals => _proposals
       .where((p) => p.status == ProposalStatus.pending)
@@ -279,7 +318,32 @@ class MotivationController extends ChangeNotifier {
 
   int get totalXp => statsSnapshot.totalXp;
 
-  LevelProgress get levelProgress => levelProgressFor(totalXp);
+  LevelProgress get levelProgress =>
+      levelProgressFor(totalXp, curve: _levelCurve);
+
+  // Gamification settings, read-only.
+  double get xpMultiplier => _xpMultiplier;
+  LevelCurve get levelCurve => _levelCurve;
+  int get perfectDayBonus => _perfectDayBonus;
+  bool get streakProtection => _streakProtection;
+  bool get dailyReminder => _dailyReminder;
+  String get reminderTime => _reminderTime;
+  bool get motivationMessages => _motivationMessages;
+  bool get showAtmosphere => _showAtmosphere;
+
+  int get _graceLimit => _streakProtection ? 1 : 0;
+
+  /// Perfect-day bonus that applies to [date] (0 if disabled or not perfect).
+  int bonusXpForDate(DateTime date) {
+    if (_perfectDayBonus <= 0) return 0;
+    return isPerfectDay(occurrencesForDay(date)) ? _perfectDayBonus : 0;
+  }
+
+  bool takePerfectToast() {
+    final pending = _pendingPerfectToast;
+    _pendingPerfectToast = false;
+    return pending;
+  }
 
   DayWorkload workloadForDate(DateTime date) => workloadForDay(
         date: date,
@@ -287,7 +351,14 @@ class MotivationController extends ChangeNotifier {
         dayTargets: _dayTargetXp,
       );
 
+  /// Task XP completed on [date]; excludes the perfect-day bonus.
   int completedXpForDate(DateTime date) => workloadForDate(date).completedXp;
+
+  /// Total XP possible on [date] (all non-skipped task XP + perfect bonus).
+  int possibleXpForDate(DateTime date) {
+    final base = workloadForDate(date).plannedXp;
+    return base + (_perfectDayBonus > 0 && base > 0 ? _perfectDayBonus : 0);
+  }
 
   /// The Mon–Sun days for [weekOffset] (0 = this week, 1 = next week).
   List<DateTime> weekDays(int weekOffset) {
@@ -303,6 +374,7 @@ class MotivationController extends ChangeNotifier {
       definition: definition,
       occurrences: _occurrences,
       today: today,
+      graceLimit: _graceLimit,
     );
   }
 
@@ -310,6 +382,16 @@ class MotivationController extends ChangeNotifier {
         occurrences: _occurrences,
         definitions: _definitions,
         today: today,
+        perfectDayBonus: _perfectDayBonus,
+        graceLimit: _graceLimit,
+        levelCurve: _levelCurve,
+      );
+
+  PeriodStats periodStats(StatsPeriod period) => computePeriodStats(
+        occurrences: _occurrences,
+        today: today,
+        period: period,
+        perfectDayBonus: _perfectDayBonus,
       );
 
   /// Weekly completion count for a `timesPerWeek` definition, current week.
@@ -499,7 +581,21 @@ class MotivationController extends ChangeNotifier {
     double fraction = 1.0,
     String note = '',
   }) async {
-    await _plan.complete(id, fraction: fraction, note: note);
+    final wasPerfect = isPerfectDay(todaysQuests);
+    await _plan.complete(
+      id,
+      fraction: fraction,
+      note: note,
+      xpMultiplier: _xpMultiplier,
+    );
+    if (_perfectDayBonus > 0 &&
+        !wasPerfect &&
+        isPerfectDay(todaysQuests) &&
+        _lastPerfectToastKey != dayKey(today)) {
+      _lastPerfectToastKey = dayKey(today);
+      _pendingPerfectToast = true;
+      await _database.saveSetting('lastPerfectToastKey', _lastPerfectToastKey);
+    }
     await _afterWrite();
   }
 
@@ -648,6 +744,51 @@ class MotivationController extends ChangeNotifier {
     _dayTargetXp = List.of(_dayTargetXp)..[weekdayIndex] = value.clamp(0, 100000);
     notifyListeners();
     await _database.saveSetting('dayTargetXp', _dayTargetXp);
+  }
+
+  Future<void> _setAndSave(String key, Object? value) async {
+    notifyListeners();
+    await _database.saveSetting(key, value);
+  }
+
+  Future<void> setXpMultiplier(double value) async {
+    _xpMultiplier = double.parse(value.clamp(0.1, 5.0).toStringAsFixed(1));
+    await _setAndSave('xpMultiplier', _xpMultiplier);
+  }
+
+  Future<void> setLevelCurve(LevelCurve value) async {
+    _levelCurve = value;
+    await _setAndSave('levelCurve', value.name);
+  }
+
+  Future<void> setPerfectDayBonus(int value) async {
+    _perfectDayBonus = value.clamp(0, 500);
+    await _setAndSave('perfectDayBonus', _perfectDayBonus);
+  }
+
+  Future<void> setStreakProtection(bool value) async {
+    _streakProtection = value;
+    await _setAndSave('streakProtection', value);
+  }
+
+  Future<void> setDailyReminder(bool value) async {
+    _dailyReminder = value;
+    await _setAndSave('dailyReminder', value);
+  }
+
+  Future<void> setReminderTime(String value) async {
+    _reminderTime = value;
+    await _setAndSave('reminderTime', value);
+  }
+
+  Future<void> setMotivationMessages(bool value) async {
+    _motivationMessages = value;
+    await _setAndSave('motivationMessages', value);
+  }
+
+  Future<void> setShowAtmosphere(bool value) async {
+    _showAtmosphere = value;
+    await _setAndSave('showAtmosphere', value);
   }
 
   // ---- Backup --------------------------------------------------------

@@ -174,10 +174,10 @@ any definition edit / date rollover:
 Pure functions over the loaded lists – no I/O, fully unit-tested.
 
 ### 5.1 Progression (`progression.dart`)
-`totalXp` = Σ `awardedXp` of all completions.
-Level curve: cumulative XP to *reach* level `L` is `25 * (L - 1) * (L + 2)`
-(L1 = 0, L2 = 100, L3 = 250, L4 = 450, L5 = 700, L6 = 1000, …). Single
-formula, easy to retune.
+`totalXp` = Σ `awardedXp` of all completions **plus** the perfect-day bonus
+for every perfect day (see 5.6). Level curve: cumulative XP to *reach* level
+`L` is `25 * (L - 1) * (L + 2)`, scaled by the `LevelCurve` setting
+(`sanft` ×0.7 / `standard` ×1.0 / `steil` ×1.4).
 
 ### 5.2 Streaks (`streaks.dart`) – recurring definitions only
 - **fixedWeekdays**: walk scheduled dates backward from the most recent past
@@ -203,8 +203,21 @@ satisfied ids; controller persists unlocks and shows a toast. ~12 to start
 whole week planned, five categories used, …).
 
 ### 5.5 Statistics (`statistics.dart`)
-Selectors for: XP over time (day/week), XP by category, completion rate,
-planned vs completed per day, per-definition streak table, level history.
+`buildStatsSnapshot` (dashboard + achievements) and `computePeriodStats`
+(Statistik page: Woche/Monat/Jahr/Alle Zeit — task/XP totals, week-over-week
+deltas, completion-rate donut, bar chart, weekly overview).
+
+### 5.6 Gamification settings (Einstellungen → Gamification)
+Persisted as individual `settings` keys, exposed by the controller and
+threaded into the domain functions:
+
+| Setting | Effect |
+| --- | --- |
+| `xpMultiplier` (0.1–5.0) | `awardedXp = round(taskXp × fraction × multiplier)` at completion (snapshot). |
+| `levelCurve` | scales the whole XP→level curve. |
+| `perfectDayBonus` (0–500, dflt 50) | added to `totalXp` / `xpByDay` for each **perfect day** (≥1 real completion, nothing left open). A toast fires the moment today turns perfect. |
+| `streakProtection` (dflt on) | grace limit for `computeStreak` — on = 1 forgiven miss, off = 0. |
+| `dailyReminder` + `reminderTime`, `motivationMessages`, `showAtmosphere` | UI-only prefs. Web notification *delivery* is not implemented — the preference is stored and labelled as such. |
 
 ---
 

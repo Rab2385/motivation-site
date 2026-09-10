@@ -7,11 +7,11 @@ import '../theme/app_theme.dart';
 import 'complete_quest_sheet.dart';
 import 'task_editor_sheet.dart';
 
-/// One quest row. Tapping an open quest on the current day opens the complete
-/// sheet; the trailing menu handles edit / skip / move / copy / remove.
+/// One quest row.
 ///
-/// [flat] drops the card chrome so the row can sit inside a larger list card
-/// (the dashboard / today layout in the reference).
+/// * [flat] drops the card chrome for embedding in a larger list card.
+/// * [trailingCheckbox] puts the checkbox on the right and shows a category
+///   icon tile on the left (the "Heute" layout from the mockup).
 class QuestTile extends StatelessWidget {
   const QuestTile({
     super.key,
@@ -19,14 +19,16 @@ class QuestTile extends StatelessWidget {
     required this.occurrence,
     this.flat = false,
     this.showDivider = false,
+    this.trailingCheckbox = false,
   });
 
   final MotivationController controller;
   final TaskOccurrence occurrence;
   final bool flat;
   final bool showDivider;
+  final bool trailingCheckbox;
 
-  void _onTap(BuildContext context) {
+  void _onTapBody(BuildContext context) {
     final canComplete = controller.canCompleteOn(occurrence.date);
     if (occurrence.isSkipped) {
       controller.unskipOccurrence(occurrence.id);
@@ -34,6 +36,15 @@ class QuestTile extends StatelessWidget {
       if (canComplete) controller.undoComplete(occurrence.id);
     } else if (canComplete) {
       showCompleteQuestSheet(context, controller, occurrence);
+    }
+  }
+
+  void _toggle(BuildContext context) {
+    if (!controller.canCompleteOn(occurrence.date)) return;
+    if (occurrence.isCompleted) {
+      controller.undoComplete(occurrence.id);
+    } else {
+      controller.completeQuest(occurrence.id);
     }
   }
 
@@ -47,19 +58,32 @@ class QuestTile extends StatelessWidget {
         ? occurrence.note.trim()
         : category.name;
 
+    final check = GestureDetector(
+      onTap: () => _toggle(context),
+      child: _Check(done: done, partial: partial, skipped: occurrence.isSkipped),
+    );
+
     final row = InkWell(
       borderRadius: BorderRadius.circular(flat ? 10 : 16),
-      onTap: () => _onTap(context),
+      onTap: () => _onTapBody(context),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(flat ? 4 : 14, 10, 4, 10),
+        padding: EdgeInsets.fromLTRB(flat ? 4 : 14, 11, 6, 11),
         child: Row(
           children: [
-            _Check(done: done, partial: partial, skipped: occurrence.isSkipped),
-            const SizedBox(width: 12),
-            Container(width: 3, height: 34, decoration: BoxDecoration(
-              color: category.color.withValues(alpha: 0.9),
-              borderRadius: BorderRadius.circular(2),
-            )),
+            if (trailingCheckbox)
+              _IconTile(icon: category.icon, color: category.color)
+            else ...[
+              check,
+              const SizedBox(width: 12),
+              Container(
+                width: 3,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: category.color.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ],
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -68,8 +92,9 @@ class QuestTile extends StatelessWidget {
                   Text(
                     occurrence.title,
                     style: theme.textTheme.titleSmall?.copyWith(
-                      decoration:
-                          occurrence.isSkipped ? TextDecoration.lineThrough : null,
+                      decoration: occurrence.isSkipped
+                          ? TextDecoration.lineThrough
+                          : null,
                       color: occurrence.isSkipped
                           ? AppTheme.textLow
                           : (done ? AppTheme.textMid : AppTheme.textHigh),
@@ -78,8 +103,9 @@ class QuestTile extends StatelessWidget {
                   const SizedBox(height: 1),
                   Row(
                     children: [
-                      if (occurrence.isRecurring) ...[
-                        const Icon(Icons.autorenew, size: 11, color: AppTheme.textLow),
+                      if (occurrence.isRecurring && !trailingCheckbox) ...[
+                        const Icon(Icons.autorenew,
+                            size: 11, color: AppTheme.textLow),
                         const SizedBox(width: 4),
                       ],
                       Flexible(
@@ -100,10 +126,17 @@ class QuestTile extends StatelessWidget {
               '+${occurrence.isCompleted ? occurrence.completion!.awardedXp : occurrence.xp} XP',
               style: TextStyle(
                 fontWeight: FontWeight.w700,
-                color: occurrence.isSkipped ? AppTheme.textLow : AppTheme.goldBright,
+                color:
+                    occurrence.isSkipped ? AppTheme.textLow : AppTheme.goldBright,
               ),
             ),
-            _QuestMenu(controller: controller, occurrence: occurrence),
+            if (trailingCheckbox) ...[
+              const SizedBox(width: 12),
+              check,
+              _QuestMenu(
+                  controller: controller, occurrence: occurrence, subtle: true),
+            ] else
+              _QuestMenu(controller: controller, occurrence: occurrence),
           ],
         ),
       ),
@@ -119,6 +152,25 @@ class QuestTile extends StatelessWidget {
       );
     }
     return Card(child: row);
+  }
+}
+
+class _IconTile extends StatelessWidget {
+  const _IconTile({required this.icon, required this.color});
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 34,
+      height: 34,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Icon(icon, size: 17, color: color),
+    );
   }
 }
 
@@ -158,16 +210,22 @@ class _Check extends StatelessWidget {
 }
 
 class _QuestMenu extends StatelessWidget {
-  const _QuestMenu({required this.controller, required this.occurrence});
+  const _QuestMenu({
+    required this.controller,
+    required this.occurrence,
+    this.subtle = false,
+  });
 
   final MotivationController controller;
   final TaskOccurrence occurrence;
+  final bool subtle;
 
   @override
   Widget build(BuildContext context) {
     final isPast = controller.isPast(occurrence.date);
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_horiz, size: 19, color: AppTheme.textLow),
+      icon: Icon(Icons.more_horiz,
+          size: subtle ? 17 : 19, color: AppTheme.textLow),
       onSelected: (value) async {
         switch (value) {
           case 'edit':

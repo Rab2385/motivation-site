@@ -26,6 +26,7 @@ class _WeekPlanPageState extends State<WeekPlanPage> {
   Widget build(BuildContext context) {
     return PageScaffold(
       title: AppText.weekPlanning,
+      subtitle: 'Bereite deine Woche vor – zwei Wochen im Blick.',
       listenable: controller,
       actions: [
         PopupMenuButton<String>(

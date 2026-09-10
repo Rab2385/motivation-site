@@ -15,6 +15,7 @@ class AchievementsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return PageScaffold(
       title: AppText.achievements,
+      subtitle: 'Meilensteine auf deiner Reise.',
       listenable: controller,
       builder: (context) {
         final unlocks = controller.achievementUnlocks;
