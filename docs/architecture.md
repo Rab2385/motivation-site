@@ -160,9 +160,9 @@ Pure functions over the loaded lists – no I/O, fully unit-tested.
 
 ### 5.1 Progression (`progression.dart`)
 `totalXp` = Σ `awardedXp` of all completions.
-Level curve: cumulative XP to *reach* level `L` is `25 * L * (L + 3)`
-(L1 = 100, L2 = 250, L3 = 450, L4 = 700, L5 = 1000, …). Single constant,
-easy to retune.
+Level curve: cumulative XP to *reach* level `L` is `25 * (L - 1) * (L + 2)`
+(L1 = 0, L2 = 100, L3 = 250, L4 = 450, L5 = 700, L6 = 1000, …). Single
+formula, easy to retune.
 
 ### 5.2 Streaks (`streaks.dart`) – recurring definitions only
 - **fixedWeekdays**: walk scheduled dates backward from the most recent past
