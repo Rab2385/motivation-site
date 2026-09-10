@@ -56,6 +56,16 @@ class _MotivationShellState extends State<MotivationShell> {
 
   void _onControllerChanged() {
     if (!mounted) return;
+    setState(() {});
+    if (widget.controller.takePerfectToast()) {
+      showQuestToast(
+        context,
+        title: AppText.perfectDayBonusToast,
+        subtitle: '+${widget.controller.perfectDayBonus} XP Bonus',
+        icon: Icons.wb_sunny,
+        accent: AppTheme.goldBright,
+      );
+    }
     final achievements = {for (final a in achievementCatalogue) a.id: a};
     for (final id in widget.controller.takeAchievementToasts()) {
       final achievement = achievements[id];
@@ -122,6 +132,7 @@ class _MotivationShellState extends State<MotivationShell> {
                   selectedIndex: _index,
                   onSelect: _select,
                   extended: constraints.maxWidth >= 1240,
+                  showAtmosphere: widget.controller.showAtmosphere,
                 ),
                 const VerticalDivider(width: 1),
                 Expanded(child: page),
@@ -156,12 +167,14 @@ class _Sidebar extends StatelessWidget {
     required this.selectedIndex,
     required this.onSelect,
     required this.extended,
+    required this.showAtmosphere,
   });
 
   final List<_Destination> destinations;
   final int selectedIndex;
   final void Function(int) onSelect;
   final bool extended;
+  final bool showAtmosphere;
 
   @override
   Widget build(BuildContext context) {
@@ -171,23 +184,24 @@ class _Sidebar extends StatelessWidget {
       color: AppTheme.bgRaised,
       child: Stack(
         children: [
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: 220,
-            child: ShaderMask(
-              shaderCallback: (rect) => const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Colors.transparent, Colors.white],
-                stops: [0.0, 0.7],
-              ).createShader(rect),
-              blendMode: BlendMode.dstIn,
-              child: const AtmosphereBackground(
-                  seed: 19, glowAlignment: Alignment(0, 1.2)),
+          if (showAtmosphere)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 220,
+              child: ShaderMask(
+                shaderCallback: (rect) => const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, Colors.white],
+                  stops: [0.0, 0.7],
+                ).createShader(rect),
+                blendMode: BlendMode.dstIn,
+                child: const AtmosphereBackground(
+                    seed: 19, glowAlignment: Alignment(0, 1.2)),
+              ),
             ),
-          ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

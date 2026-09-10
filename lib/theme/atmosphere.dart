@@ -174,6 +174,27 @@ class _CompassPainter extends CustomPainter {
   bool shouldRepaint(_CompassPainter oldDelegate) => oldDelegate.color != color;
 }
 
+/// The dashboard hero emblem: a compass rose inside a gold progress ring.
+class CompassMedallion extends StatelessWidget {
+  const CompassMedallion({super.key, required this.fraction, this.size = 96});
+
+  final double fraction;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return GoldRing(
+      fraction: fraction,
+      size: size,
+      child: SizedBox(
+        width: size * 0.62,
+        height: size * 0.62,
+        child: CustomPaint(painter: _CompassPainter(AppTheme.gold)),
+      ),
+    );
+  }
+}
+
 /// Gold progress ring with a soft trailing glow, used for the level display.
 class GoldRing extends StatelessWidget {
   const GoldRing({

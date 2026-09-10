@@ -353,12 +353,13 @@ class PlanService {
     String occurrenceId, {
     double fraction = 1.0,
     String note = '',
+    double xpMultiplier = 1.0,
   }) async {
     final index = _occurrences.indexWhere((o) => o.id == occurrenceId);
     if (index == -1) return;
     final occurrence = _occurrences[index];
     final clamped = fraction.clamp(0.05, 1.0);
-    final awardedXp = (occurrence.xp * clamped).round();
+    final awardedXp = (occurrence.xp * clamped * xpMultiplier).round();
 
     final updated = occurrence.copyWith(
       isSkipped: false,

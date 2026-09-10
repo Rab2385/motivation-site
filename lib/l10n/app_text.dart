@@ -122,7 +122,91 @@ class AppText {
   static const rewardRedeemed = 'Belohnung eingelöst';
   static const enjoyIt = 'Genieß es – du hast es dir verdient.';
 
+  // Dashboard – misc
+  static const dashboardSubline = 'Bleib dran. Große Ziele brauchen Zeit.';
+  static const unlockedRewardsChip = ' Freigeschaltete Belohnungen';
+  static const daysStreak = ' Tage Streak';
+  static const tasksDoneShort = ' Erledigte Tasks';
+
+  // Heute
+  static const addTask = 'Aufgabe hinzufügen';
+  static const tasksDoneOf = ' Aufgaben erledigt';
+  static const xpPossible = ' XP möglich';
+  static const notPerfectJustConsistent =
+      'Du musst nicht perfekt sein. Nur konsequent.';
+  static const previousDay = 'Vorheriger Tag';
+  static const nextDay = 'Nächster Tag';
+  static const backToToday = 'Zurück zu heute';
+  static const pastDayReadOnly = 'Vergangene Tage sind schreibgeschützt.';
+
+  // Gewohnheiten
+  static const myHabits = 'Meine Gewohnheiten';
+  static const habitsSubline = 'Forme heute die Person, die du morgen sein willst.';
+  static const filterAll = 'Alle';
+  static const filterDaily = 'Täglich';
+  static const filterWeekly = 'Wöchentlich';
+  static const filterOnce = 'Einmalig';
+  static const filterInactive = 'Inaktiv';
+  static const daily = 'Täglich';
+  static const weekly = 'Wöchentlich';
+  static const once = 'Einmalig';
+
+  // Belohnungen
+  static const rewardsSubline = 'Verdiene dir, was sich gut anfühlt.';
+  static const ownReward = 'Eigene Belohnung';
+  static const createOwnReward = 'Eigene Belohnung erstellen';
+  static const filterUnlocked = 'Freigeschaltet';
+  static const filterLocked = 'Gesperrt';
+  static const unlockedLabel = 'Freigeschaltet';
+  static const levelRequired = ' erforderlich';
+  static const rewardsAreProgress =
+      'Belohnungen sind kein Luxus – sie sind Teil der Reise.';
+
+  // Statistik
+  static const statisticsSubline =
+      'Fortschritt ist die Summe kleiner Anstrengungen.';
+  static const xpHistory = 'XP-Verlauf';
+  static const tasksCompleted = 'Aufgaben erledigt';
+  static const weeklyOverview = 'Wöchentliche Übersicht';
+  static const currentStreakLabel = 'Aktuelle Streak';
+  static const longestStreakLabel = 'Tage längste Streak';
+  static const vsPrevious = ' vs. Vorwoche';
+  static const betterNightByNight =
+      'Du wirst nicht über Nacht besser. Aber du wirst besser – Nacht für Nacht.';
+
   // Settings
+  static const settingsSubline = 'Gestalte die App so, wie sie zu dir passt.';
+  static const tabGeneral = 'Allgemein';
+  static const tabGamification = 'Gamification';
+  static const tabAppearance = 'Darstellung';
+  static const tabData = 'Daten';
+  static const tabAbout = 'Über';
+  static const xpAndLeveling = 'XP & Leveling';
+  static const xpMultiplier = 'XP-Multiplikator';
+  static const xpMultiplierHint = 'Alle XP-Werte mit einem Faktor multiplizieren.';
+  static const levelCurveLabel = 'Level-Kurve';
+  static const levelCurveHint =
+      'Bestimmt, wie viel XP für das nächste Level benötigt wird.';
+  static const perfectDayBonusLabel = 'Perfekter Tag Bonus';
+  static const perfectDayBonusHint =
+      'Zusätzliche XP, wenn alle Aufgaben erledigt sind.';
+  static const streakProtectionLabel = 'Streak-Schutz';
+  static const streakProtectionHint =
+      'Ein verpasster Tag unterbricht den Streak nicht sofort.';
+  static const notifications = 'Benachrichtigungen';
+  static const dailyReminderLabel = 'Tägliche Erinnerung';
+  static const dailyReminderHint = 'Erinnere mich an meine Aufgaben.';
+  static const motivationMessagesLabel = 'Motivationsnachrichten';
+  static const motivationMessagesHint = 'Zeige zufällige motivierende Sprüche.';
+  static const notificationsUnavailable =
+      'Hinweis: Web-Benachrichtigungen werden noch nicht ausgeliefert – die Einstellung wird gespeichert.';
+  static const showAtmosphereLabel = 'Hintergrund-Atmosphäre';
+  static const showAtmosphereHint =
+      'Die gemalte Berglandschaft hinter den Karten anzeigen.';
+  static const aboutText =
+      'Quest ist ein lokaler, gamifizierter Habit-Tracker. Deine Daten bleiben auf deinem Gerät. Kein Konto, keine Cloud, offline nutzbar.';
+  static const perfectDayBonusToast = 'Perfekter Tag!';
+
   static const dayTargets = 'Tagesziele (XP)';
   static const darkMode = 'Dunkles Design';
   static const categoriesTitle = 'Kategorien';

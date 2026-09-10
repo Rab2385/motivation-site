@@ -74,17 +74,30 @@ class RewardCard extends StatelessWidget {
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 color: unlocked ? AppTheme.textHigh : AppTheme.textMid),
           ),
-          const SizedBox(height: 2),
-          Text(
-            unlocked
-                ? (reward.description.isEmpty
-                    ? AppText.rewardUnlockedYou
-                    : reward.description)
-                : '${AppText.unlockAtLevel}${reward.requiredLevel}',
-            style: const TextStyle(color: AppTheme.textMid, fontSize: 12),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
+          const SizedBox(height: 3),
+          if (unlocked)
+            Row(
+              children: [
+                const Icon(Icons.check_circle,
+                    size: 13, color: AppTheme.successAccent),
+                const SizedBox(width: 4),
+                Text(AppText.unlockedLabel,
+                    style: const TextStyle(
+                        color: AppTheme.successAccent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600)),
+              ],
+            )
+          else
+            Text('Level ${reward.requiredLevel}${AppText.levelRequired}',
+                style: const TextStyle(color: AppTheme.textMid, fontSize: 12)),
+          if (unlocked && reward.description.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(reward.description,
+                style: const TextStyle(color: AppTheme.textLow, fontSize: 11.5),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis),
+          ],
           if (reward.redeemedCount > 0) ...[
             const SizedBox(height: 4),
             Text('${reward.redeemedCount}${AppText.redeemedTimes}',
@@ -127,25 +140,24 @@ class _LockProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final progress = controller.levelProgress;
-    final span = (requiredLevel - progress.level).clamp(1, 99);
-    final fraction =
-        (span == 1 ? progress.fraction : progress.fraction / span)
-            .clamp(0.0, 1.0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(6),
           child: LinearProgressIndicator(
-            value: fraction,
+            value: progress.fraction.clamp(0.0, 1.0),
             minHeight: 6,
             backgroundColor: const Color(0xFF1B2740),
             valueColor: const AlwaysStoppedAnimation(Color(0xFF3E5C8A)),
           ),
         ),
         const SizedBox(height: 6),
-        Text('Level ${progress.level} / $requiredLevel',
-            style: const TextStyle(color: AppTheme.textLow, fontSize: 11)),
+        Text(
+          '${progress.xpIntoLevel} / ${progress.xpForThisLevel} XP · '
+          'Level ${progress.level}/$requiredLevel',
+          style: const TextStyle(color: AppTheme.textLow, fontSize: 11),
+        ),
       ],
     );
   }
