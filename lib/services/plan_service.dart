@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 
 import '../data/motivation_database.dart';
 import '../domain/difficulty.dart';
+import '../domain/habit_target.dart';
 import '../domain/progression.dart';
 import '../models/completion.dart';
 import '../models/proposal.dart';
@@ -75,7 +76,9 @@ class PlanService {
     required String categoryId,
     required int xp,
     String note = '',
+    String section = '',
     Difficulty? difficulty,
+    HabitTarget? target,
   }) async {
     final now = _now();
     final occurrence = TaskOccurrence(
@@ -83,9 +86,11 @@ class PlanService {
       dateKey: dayKey(date),
       title: title.trim(),
       note: note.trim(),
+      section: section,
       categoryId: categoryId,
       difficulty: difficulty,
       xp: xp,
+      target: target,
       origin: OccurrenceOrigin.oneOff,
       createdAt: now,
       updatedAt: now,
@@ -102,16 +107,20 @@ class PlanService {
     required int xp,
     required RecurrenceRule recurrence,
     String note = '',
+    String section = '',
     Difficulty? difficulty,
+    HabitTarget? target,
   }) async {
     final now = _now();
     final definition = TaskDefinition(
       id: newId('def'),
       title: title.trim(),
       note: note.trim(),
+      section: section,
       categoryId: categoryId,
       difficulty: difficulty,
       xp: xp,
+      target: target,
       recurrence: recurrence,
       createdAt: now,
       updatedAt: now,
@@ -126,10 +135,13 @@ class PlanService {
     String definitionId, {
     String? title,
     String? note,
+    String? section,
     String? categoryId,
     Difficulty? difficulty,
     bool clearDifficulty = false,
     int? xp,
+    HabitTarget? target,
+    bool clearTarget = false,
     RecurrenceRule? recurrence,
     bool? isPaused,
     bool? isArchived,
@@ -139,10 +151,13 @@ class PlanService {
     final updated = _definitions[index].copyWith(
       title: title?.trim(),
       note: note?.trim(),
+      section: section,
       categoryId: categoryId,
       difficulty: difficulty,
       clearDifficulty: clearDifficulty,
       xp: xp,
+      target: target,
+      clearTarget: clearTarget,
       recurrence: recurrence,
       isPaused: isPaused,
       isArchived: isArchived,
@@ -204,9 +219,11 @@ class PlanService {
       dateKey: dayKey(date),
       title: definition.title,
       note: definition.note,
+      section: definition.section,
       categoryId: definition.categoryId,
       difficulty: definition.difficulty,
       xp: definition.xp,
+      target: definition.target,
       origin: OccurrenceOrigin.recurring,
       sourceDefinitionId: definition.id,
       isForked: true,
@@ -229,9 +246,11 @@ class PlanService {
       dateKey: dayKey(date),
       title: definition.title,
       note: definition.note,
+      section: definition.section,
       categoryId: definition.categoryId,
       difficulty: definition.difficulty,
       xp: definition.xp,
+      target: definition.target,
       origin: OccurrenceOrigin.quota,
       sourceDefinitionId: definition.id,
       isForked: true,
@@ -247,20 +266,26 @@ class PlanService {
     String occurrenceId, {
     String? title,
     String? note,
+    String? section,
     String? categoryId,
     Difficulty? difficulty,
     bool clearDifficulty = false,
     int? xp,
+    HabitTarget? target,
+    bool clearTarget = false,
   }) async {
     final index = _occurrences.indexWhere((o) => o.id == occurrenceId);
     if (index == -1) return;
     final updated = _occurrences[index].copyWith(
       title: title?.trim(),
       note: note?.trim(),
+      section: section,
       categoryId: categoryId,
       difficulty: difficulty,
       clearDifficulty: clearDifficulty,
       xp: xp,
+      target: target,
+      clearTarget: clearTarget,
       // Editing a recurring occurrence forks it from its definition.
       isForked: _occurrences[index].isRecurring ? true : null,
       updatedAt: _now(),
@@ -313,9 +338,11 @@ class PlanService {
         date: toDate,
         title: occurrence.title,
         note: occurrence.note,
+        section: occurrence.section,
         categoryId: occurrence.categoryId,
         difficulty: occurrence.difficulty,
         xp: occurrence.xp,
+        target: occurrence.target,
       );
       return;
     }
@@ -341,9 +368,11 @@ class PlanService {
       date: toDate,
       title: source.title,
       note: source.note,
+      section: source.section,
       categoryId: source.categoryId,
       difficulty: source.difficulty,
       xp: source.xp,
+      target: source.target,
     );
   }
 
@@ -363,12 +392,51 @@ class PlanService {
 
     final updated = occurrence.copyWith(
       isSkipped: false,
+      loggedAmount:
+          occurrence.hasTarget ? occurrence.target!.amount : occurrence.loggedAmount,
       completion: Completion(
         completedAt: _now(),
         awardedXp: awardedXp,
         fraction: clamped,
         note: note.trim(),
       ),
+      updatedAt: _now(),
+    );
+    _occurrences[index] = updated;
+    await _db.saveOccurrence(updated);
+  }
+
+  /// Logs progress against an occurrence's quantity target (e.g. "6h59min of
+  /// 7h sleep"). Reaching the target auto-completes it for full XP; anything
+  /// less just updates what the row shows and leaves it open.
+  Future<void> logProgress(
+    String occurrenceId,
+    double amount, {
+    double xpMultiplier = 1.0,
+  }) async {
+    final index = _occurrences.indexWhere((o) => o.id == occurrenceId);
+    if (index == -1) return;
+    final occurrence = _occurrences[index];
+    final target = occurrence.target;
+    if (target == null) return;
+    final clampedAmount = amount.clamp(0, target.amount * 2).toDouble();
+
+    if (clampedAmount >= target.amount) {
+      final awardedXp = (occurrence.xp * xpMultiplier).round();
+      final updated = occurrence.copyWith(
+        isSkipped: false,
+        loggedAmount: clampedAmount,
+        completion: Completion(completedAt: _now(), awardedXp: awardedXp),
+        updatedAt: _now(),
+      );
+      _occurrences[index] = updated;
+      await _db.saveOccurrence(updated);
+      return;
+    }
+
+    final updated = occurrence.copyWith(
+      loggedAmount: clampedAmount,
+      clearCompletion: true,
       updatedAt: _now(),
     );
     _occurrences[index] = updated;
@@ -722,7 +790,7 @@ class PlanService {
 
 /// Suggested XP for a fresh task with the given difficulty (nullable).
 int suggestedXp(Difficulty? difficulty) =>
-    difficulty?.defaultXp ?? Difficulty.mittel.defaultXp;
+    difficulty?.defaultXp ?? Difficulty.medium.defaultXp;
 
 /// Convenience re-export so callers don't import progression just for this.
 int levelForXp(int totalXp) => levelProgressFor(totalXp).level;

@@ -10,15 +10,15 @@ void main() {
   DateTime d(int add) => monday.add(Duration(days: add));
 
   group('level curve', () {
-    test('steil needs more XP than standard for the same level', () {
+    test('steep needs more XP than standard for the same level', () {
       final std = levelProgressFor(700, curve: LevelCurve.standard).level;
-      final steil = levelProgressFor(700, curve: LevelCurve.steil).level;
-      expect(steil, lessThan(std));
+      final steep = levelProgressFor(700, curve: LevelCurve.steep).level;
+      expect(steep, lessThan(std));
     });
 
-    test('sanft needs less XP', () {
-      final sanft = levelProgressFor(700, curve: LevelCurve.sanft).level;
-      expect(sanft, greaterThanOrEqualTo(5));
+    test('gentle needs less XP', () {
+      final gentle = levelProgressFor(700, curve: LevelCurve.gentle).level;
+      expect(gentle, greaterThanOrEqualTo(5));
     });
   });
 

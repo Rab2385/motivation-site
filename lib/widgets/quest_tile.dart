@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 
+import '../domain/habit_target.dart';
 import '../l10n/app_text.dart';
 import '../models/task_occurrence.dart';
 import '../state/motivation_controller.dart';
 import '../theme/app_theme.dart';
 import 'complete_quest_sheet.dart';
+import 'log_progress_sheet.dart';
 import 'task_editor_sheet.dart';
 
-/// One quest row.
+/// One habit/task row: `[ ] icon Title            🔥N  +XP  ⋯`, with a
+/// `// note` or quantity-progress line underneath.
 ///
-/// * [flat] drops the card chrome for embedding in a larger list card.
-/// * [trailingCheckbox] puts the checkbox on the right and shows a category
-///   icon tile on the left (the "Heute" layout from the mockup).
+/// [flat] drops the card chrome for embedding in a larger list card.
 class QuestTile extends StatelessWidget {
   const QuestTile({
     super.key,
@@ -19,28 +20,25 @@ class QuestTile extends StatelessWidget {
     required this.occurrence,
     this.flat = false,
     this.showDivider = false,
-    this.trailingCheckbox = false,
+    this.showStreak = false,
   });
 
   final MotivationController controller;
   final TaskOccurrence occurrence;
   final bool flat;
   final bool showDivider;
-  final bool trailingCheckbox;
+  final bool showStreak;
 
-  void _onTapBody(BuildContext context) {
-    final canComplete = controller.canCompleteOn(occurrence.date);
+  void _onTapCheckbox(BuildContext context) {
+    if (!controller.canCompleteOn(occurrence.date)) return;
     if (occurrence.isSkipped) {
       controller.unskipOccurrence(occurrence.id);
-    } else if (occurrence.isCompleted) {
-      if (canComplete) controller.undoComplete(occurrence.id);
-    } else if (canComplete) {
-      showCompleteQuestSheet(context, controller, occurrence);
+      return;
     }
-  }
-
-  void _toggle(BuildContext context) {
-    if (!controller.canCompleteOn(occurrence.date)) return;
+    if (occurrence.hasTarget) {
+      showLogProgressSheet(context, controller, occurrence);
+      return;
+    }
     if (occurrence.isCompleted) {
       controller.undoComplete(occurrence.id);
     } else {
@@ -54,89 +52,80 @@ class QuestTile extends StatelessWidget {
     final theme = Theme.of(context);
     final done = occurrence.isFullyCompleted;
     final partial = occurrence.isCompleted && !done;
-    final subtitle = occurrence.note.trim().isNotEmpty
-        ? occurrence.note.trim()
-        : category.name;
+    final streak =
+        showStreak && occurrence.isRecurring && occurrence.sourceDefinitionId != null
+            ? controller.streakFor(occurrence.sourceDefinitionId!).current
+            : 0;
 
-    final check = GestureDetector(
-      onTap: () => _toggle(context),
-      child: _Check(done: done, partial: partial, skipped: occurrence.isSkipped),
-    );
+    String subtitle;
+    if (occurrence.isSkipped) {
+      subtitle = AppText.plannedSkip;
+    } else if (occurrence.hasTarget) {
+      subtitle = formatTargetProgress(occurrence.loggedAmount, occurrence.target!);
+    } else if (occurrence.note.trim().isNotEmpty) {
+      subtitle = occurrence.note.trim();
+    } else {
+      subtitle = category.name;
+    }
 
     final row = InkWell(
-      borderRadius: BorderRadius.circular(flat ? 10 : 16),
-      onTap: () => _onTapBody(context),
+      borderRadius: BorderRadius.circular(flat ? 6 : 10),
+      onTap: () => _onTapCheckbox(context),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(flat ? 4 : 14, 11, 6, 11),
+        padding: EdgeInsets.fromLTRB(flat ? 4 : 12, 9, 4, 9),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (trailingCheckbox)
-              _IconTile(icon: category.icon, color: category.color)
-            else ...[
-              check,
-              const SizedBox(width: 12),
-              Container(
-                width: 3,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: category.color.withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ],
-            const SizedBox(width: 12),
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
+              child: _Bracket(done: done, partial: partial, skipped: occurrence.isSkipped),
+            ),
+            const SizedBox(width: 8),
+            Icon(category.icon, size: 15, color: category.color),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     occurrence.title,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      decoration: occurrence.isSkipped
-                          ? TextDecoration.lineThrough
-                          : null,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontSize: 13.5,
+                      decoration:
+                          occurrence.isSkipped ? TextDecoration.lineThrough : null,
                       color: occurrence.isSkipped
                           ? AppTheme.textLow
                           : (done ? AppTheme.textMid : AppTheme.textHigh),
                     ),
                   ),
-                  const SizedBox(height: 1),
-                  Row(
-                    children: [
-                      if (occurrence.isRecurring && !trailingCheckbox) ...[
-                        const Icon(Icons.autorenew,
-                            size: 11, color: AppTheme.textLow),
-                        const SizedBox(width: 4),
-                      ],
-                      Flexible(
-                        child: Text(
-                          occurrence.isSkipped ? AppText.plannedSkip : subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTheme.quote.copyWith(fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
+                  Text('// $subtitle',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTheme.comment.copyWith(fontSize: 11.5)),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            if (streak > 0) ...[
+              const Icon(Icons.local_fire_department,
+                  size: 13, color: AppTheme.streakAccent),
+              const SizedBox(width: 2),
+              Text('$streak',
+                  style: const TextStyle(
+                      color: AppTheme.streakAccent,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700)),
+              const SizedBox(width: 10),
+            ],
             Text(
               '+${occurrence.isCompleted ? occurrence.completion!.awardedXp : occurrence.xp} XP',
               style: TextStyle(
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color:
-                    occurrence.isSkipped ? AppTheme.textLow : AppTheme.goldBright,
+                    occurrence.isSkipped ? AppTheme.textLow : AppTheme.amberBright,
               ),
             ),
-            if (trailingCheckbox) ...[
-              const SizedBox(width: 12),
-              check,
-              _QuestMenu(
-                  controller: controller, occurrence: occurrence, subtle: true),
-            ] else
-              _QuestMenu(controller: controller, occurrence: occurrence),
+            _QuestMenu(controller: controller, occurrence: occurrence),
           ],
         ),
       ),
@@ -155,27 +144,8 @@ class QuestTile extends StatelessWidget {
   }
 }
 
-class _IconTile extends StatelessWidget {
-  const _IconTile({required this.icon, required this.color});
-  final IconData icon;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 34,
-      height: 34,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(9),
-      ),
-      child: Icon(icon, size: 17, color: color),
-    );
-  }
-}
-
-class _Check extends StatelessWidget {
-  const _Check({required this.done, required this.partial, required this.skipped});
+class _Bracket extends StatelessWidget {
+  const _Bracket({required this.done, required this.partial, required this.skipped});
 
   final bool done;
   final bool partial;
@@ -183,53 +153,49 @@ class _Check extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color border = AppTheme.border;
-    Color fill = Colors.transparent;
-    Widget? mark;
+    final String mark;
+    final Color color;
     if (skipped) {
-      mark = const Icon(Icons.remove, size: 15, color: AppTheme.textLow);
+      mark = '[-]';
+      color = AppTheme.textLow;
     } else if (done) {
-      border = AppTheme.gold;
-      fill = AppTheme.gold;
-      mark = const Icon(Icons.check, size: 15, color: Color(0xFF231A05));
+      mark = '[✓]';
+      color = AppTheme.amberBright;
     } else if (partial) {
-      border = AppTheme.gold;
-      mark = const Icon(Icons.timelapse, size: 14, color: AppTheme.gold);
+      mark = '[~]';
+      color = AppTheme.amber;
+    } else {
+      mark = '[ ]';
+      color = AppTheme.textMid;
     }
-    return Container(
-      width: 22,
-      height: 22,
-      decoration: BoxDecoration(
-        color: fill,
-        border: Border.all(color: border, width: 1.6),
-        borderRadius: BorderRadius.circular(6),
+    return Text(
+      mark,
+      style: TextStyle(
+        fontFamilyFallback: AppTheme.mono,
+        fontWeight: FontWeight.w700,
+        color: color,
       ),
-      child: mark,
     );
   }
 }
 
 class _QuestMenu extends StatelessWidget {
-  const _QuestMenu({
-    required this.controller,
-    required this.occurrence,
-    this.subtle = false,
-  });
+  const _QuestMenu({required this.controller, required this.occurrence});
 
   final MotivationController controller;
   final TaskOccurrence occurrence;
-  final bool subtle;
 
   @override
   Widget build(BuildContext context) {
     final isPast = controller.isPast(occurrence.date);
     return PopupMenuButton<String>(
-      icon: Icon(Icons.more_horiz,
-          size: subtle ? 17 : 19, color: AppTheme.textLow),
+      icon: const Icon(Icons.more_horiz, size: 17, color: AppTheme.textLow),
       onSelected: (value) async {
         switch (value) {
           case 'edit':
             showTaskEditorSheet(context, controller, existing: occurrence);
+          case 'log':
+            showCompleteQuestSheet(context, controller, occurrence);
           case 'skip':
             controller.skipOccurrence(occurrence.id);
           case 'unskip':
@@ -247,6 +213,8 @@ class _QuestMenu extends StatelessWidget {
       itemBuilder: (context) => [
         if (!isPast)
           const PopupMenuItem(value: 'edit', child: Text(AppText.edit)),
+        if (!isPast && controller.canCompleteOn(occurrence.date))
+          const PopupMenuItem(value: 'log', child: Text('Log with note…')),
         if (!isPast && !occurrence.isSkipped && !occurrence.isCompleted)
           const PopupMenuItem(value: 'skip', child: Text(AppText.skip)),
         if (!isPast && occurrence.isSkipped)
@@ -267,7 +235,6 @@ class _QuestMenu extends StatelessWidget {
       initialDate: initial,
       firstDate: DateTime(now.year, now.month, now.day),
       lastDate: now.add(const Duration(days: 28)),
-      locale: const Locale('de'),
     );
   }
 }

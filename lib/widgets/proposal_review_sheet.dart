@@ -7,7 +7,7 @@ import '../state/motivation_controller.dart';
 /// Renders a [Proposal] as a human-readable diff with approve / reject.
 ///
 /// This is the UI half of the AI seam. Only non-user actors create proposals;
-/// nothing here is persisted until the user taps "Übernehmen".
+/// nothing here is persisted until the user taps "Apply".
 Future<void> showProposalReviewSheet(
   BuildContext context,
   MotivationController controller,

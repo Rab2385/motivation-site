@@ -33,23 +33,23 @@ class BackupService {
     try {
       decoded = jsonDecode(raw);
     } on FormatException catch (error) {
-      throw BackupFormatException('Datei ist kein gültiges JSON: ${error.message}');
+      throw BackupFormatException('Not valid JSON: ${error.message}');
     }
     if (decoded is! Map) {
-      throw const BackupFormatException('Backup-Datei hat das falsche Format.');
+      throw const BackupFormatException('Backup file has the wrong shape.');
     }
     final version = decoded['formatVersion'];
     if (version is! int) {
-      throw const BackupFormatException('Versionsangabe fehlt.');
+      throw const BackupFormatException('Missing format version.');
     }
     if (version > formatVersion) {
       throw BackupFormatException(
-        'Backup wurde mit einer neueren App-Version erstellt (Format $version).',
+        'This backup was made with a newer app version (format $version).',
       );
     }
     final data = decoded['data'];
     if (data is! Map) {
-      throw const BackupFormatException('Backup enthält keine Daten.');
+      throw const BackupFormatException('Backup contains no data.');
     }
     return decoded.cast<String, Object?>();
   }

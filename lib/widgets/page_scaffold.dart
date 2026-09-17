@@ -42,6 +42,15 @@ class PageScaffold extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (Navigator.canPop(context))
+                        Padding(
+                          padding: const EdgeInsets.only(right: 4, top: 2),
+                          child: IconButton(
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(Icons.arrow_back, size: 20),
+                          ),
+                        ),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,

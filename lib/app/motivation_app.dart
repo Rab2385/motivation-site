@@ -44,8 +44,8 @@ class _MotivationAppState extends State<MotivationApp>
       theme: AppTheme.dark(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.dark,
-      locale: const Locale('de'),
-      supportedLocales: const [Locale('de')],
+      locale: const Locale('en'),
+      supportedLocales: const [Locale('en')],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

@@ -26,7 +26,7 @@ class _WeekPlanPageState extends State<WeekPlanPage> {
   Widget build(BuildContext context) {
     return PageScaffold(
       title: AppText.weekPlanning,
-      subtitle: 'Bereite deine Woche vor – zwei Wochen im Blick.',
+      subtitle: '// plan the next two weeks',
       listenable: controller,
       actions: [
         PopupMenuButton<String>(
@@ -139,7 +139,7 @@ class _WeekPlanPageState extends State<WeekPlanPage> {
     final chosen = await showDialog<DateTime>(
       context: context,
       builder: (context) => SimpleDialog(
-        title: const Text('An welchem Tag?'),
+        title: const Text('Which day?'),
         children: [
           for (final day in selectable)
             SimpleDialogOption(
@@ -204,7 +204,7 @@ class _WeekPlanPageState extends State<WeekPlanPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          '${result.added} hinzugefügt, ${result.skipped} bereits vorhanden',
+          '${result.added} added, ${result.skipped} already there',
         ),
       ),
     );
