@@ -1,12 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
-import '../l10n/app_text.dart';
 import '../models/recurrence_rule.dart';
 import '../models/task_definition.dart';
-import '../models/task_occurrence.dart';
 import '../state/motivation_controller.dart';
-import '../theme/app_theme.dart';
-import '../widgets/task_editor_sheet.dart';
 
 enum _HabitFilter { alle, taeglich, woechentlich, einmalig, inaktiv }
 
@@ -33,234 +29,343 @@ class _HabitsPageState extends State<HabitsPage> {
       (d.recurrence.kind == RecurrenceKind.fixedWeekdays &&
           d.recurrence.weekdays.length < 7);
 
+  List<_HabitRowData> _filteredTasks() {
+    final all = controller.definitions;
+    final active = all.where((d) => !d.isArchived && !d.isPaused).toList();
+    final inactive = all.where((d) => d.isArchived || d.isPaused).toList();
+
+    switch (_filter) {
+      case _HabitFilter.alle:
+        return [
+          for (final d in active)
+            _HabitRowData(
+              title: d.title,
+              subtitle: controller.categoryById(d.categoryId).name,
+              xp: d.xp,
+            ),
+        ];
+      case _HabitFilter.taeglich:
+        return [
+          for (final d in active.where(_isDaily))
+            _HabitRowData(
+              title: d.title,
+              subtitle: controller.categoryById(d.categoryId).name,
+              xp: d.xp,
+            ),
+        ];
+      case _HabitFilter.woechentlich:
+        return [
+          for (final d in active.where(_isWeekly))
+            _HabitRowData(
+              title: d.title,
+              subtitle: controller.categoryById(d.categoryId).name,
+              xp: d.xp,
+            ),
+        ];
+      case _HabitFilter.inaktiv:
+        return [
+          for (final d in inactive)
+            _HabitRowData(
+              title: d.title,
+              subtitle: controller.categoryById(d.categoryId).name,
+              xp: d.xp,
+            ),
+        ];
+      case _HabitFilter.einmalig:
+        return [
+          for (final o in controller.upcomingOneOffs)
+            _HabitRowData(
+              title: o.title,
+              subtitle: controller.categoryById(o.categoryId).name,
+              xp: o.xp,
+            ),
+        ];
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final rows = _filteredTasks();
+    final isCompact = MediaQuery.sizeOf(context).width < 820;
+    final totalXp = rows.fold<int>(0, (sum, item) => sum + item.xp);
+
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showTaskEditorSheet(context, controller,
-            date: controller.today, startAsRecurring: true),
-        icon: const Icon(Icons.add),
-        label: const Text(AppText.newRecurring),
-      ),
-      body: AnimatedBuilder(
-        animation: controller,
-        builder: (context, _) {
-          final all = controller.definitions;
-          final active = all.where((d) => !d.isArchived && !d.isPaused).toList();
-          final inactive = all.where((d) => d.isArchived || d.isPaused).toList();
-          final daily = active.where(_isDaily).toList();
-          final weekly = active.where(_isWeekly).toList();
-          final oneOffs = controller.upcomingOneOffs;
-
-          final counts = {
-            _HabitFilter.alle: active.length,
-            _HabitFilter.taeglich: daily.length,
-            _HabitFilter.woechentlich: weekly.length,
-            _HabitFilter.einmalig: oneOffs.length,
-            _HabitFilter.inaktiv: inactive.length,
-          };
-
-          List<Widget> rows() {
-            switch (_filter) {
-              case _HabitFilter.alle:
-                return [
-                  for (final d in active)
-                    _HabitRow(controller: controller, definition: d),
-                ];
-              case _HabitFilter.taeglich:
-                return [
-                  for (final d in daily)
-                    _HabitRow(controller: controller, definition: d),
-                ];
-              case _HabitFilter.woechentlich:
-                return [
-                  for (final d in weekly)
-                    _HabitRow(controller: controller, definition: d),
-                ];
-              case _HabitFilter.inaktiv:
-                return [
-                  for (final d in inactive)
-                    _HabitRow(controller: controller, definition: d),
-                ];
-              case _HabitFilter.einmalig:
-                return [
-                  for (final o in oneOffs)
-                    _OneOffRow(controller: controller, occurrence: o),
-                ];
-            }
-          }
-
-          final list = rows();
-
-          return Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 820),
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 96),
-                children: [
-                  Row(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1200),
+            child: Padding(
+              padding: EdgeInsets.all(isCompact ? 12 : 24),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D1727),
+                  borderRadius: BorderRadius.circular(isCompact ? 26 : 30),
+                  border: Border.all(color: const Color(0xFF23324A), width: 1.2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.22),
+                      blurRadius: 26,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(isCompact ? 16 : 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Column(
+                      _NightHeader(isCompact: isCompact),
+                      const SizedBox(height: 18),
+                      _LevelCard(
+                        level: 1,
+                        currentXp: 0,
+                        targetXp: 100,
+                        streak: 0,
+                        completed: 0,
+                        total: rows.length,
+                        isCompact: isCompact,
+                      ),
+                      const SizedBox(height: 18),
+                      if (!isCompact)
+                        Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(AppText.myHabits,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headlineMedium
-                                    ?.copyWith(fontSize: 26)),
-                            const SizedBox(height: 2),
-                            const Text(AppText.habitsSubline,
-                                style: TextStyle(color: AppTheme.textMid)),
+                            Expanded(
+                              flex: 3,
+                              child: _TaskListPanel(
+                                rows: rows,
+                                filter: _filter,
+                                totalXp: totalXp,
+                                onFilterChanged: (value) =>
+                                    setState(() => _filter = value),
+                              ),
+                            ),
+                            const SizedBox(width: 18),
+                            Expanded(flex: 2, child: _RewardPanel()),
                           ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final entry in _labels.entries)
-                        ChoiceChip(
-                          label: Text('${entry.value} (${counts[entry.key]})'),
-                          selected: _filter == entry.key,
-                          onSelected: (_) =>
-                              setState(() => _filter = entry.key),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  if (list.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 40),
-                      child: Center(
-                        child: Text(AppText.noHabitsYet,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: AppTheme.textMid)),
-                      ),
-                    )
-                  else
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 4),
-                        child: Column(
+                        )
+                      else
+                        Column(
                           children: [
-                            for (var i = 0; i < list.length; i++) ...[
-                              list[i],
-                              if (i < list.length - 1)
-                                const Divider(height: 1),
-                            ],
+                            _TaskListPanel(
+                              rows: rows,
+                              filter: _filter,
+                              totalXp: totalXp,
+                              onFilterChanged: (value) =>
+                                  setState(() => _filter = value),
+                            ),
+                            const SizedBox(height: 18),
+                            _RewardPanel(),
                           ],
                         ),
-                      ),
-                    ),
-                ],
+                    ],
+                  ),
+                ),
               ),
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
-
-  static const Map<_HabitFilter, String> _labels = {
-    _HabitFilter.alle: AppText.filterAll,
-    _HabitFilter.taeglich: AppText.filterDaily,
-    _HabitFilter.woechentlich: AppText.filterWeekly,
-    _HabitFilter.einmalig: AppText.filterOnce,
-    _HabitFilter.inaktiv: AppText.filterInactive,
-  };
 }
 
-class _HabitRow extends StatelessWidget {
-  const _HabitRow({required this.controller, required this.definition});
+class _HabitRowData {
+  const _HabitRowData({
+    required this.title,
+    required this.subtitle,
+    required this.xp,
+  });
 
-  final MotivationController controller;
-  final TaskDefinition definition;
+  final String title;
+  final String subtitle;
+  final int xp;
+}
 
-  String _frequencyLabel() {
-    final rule = definition.recurrence;
-    if (rule.kind == RecurrenceKind.timesPerWeek) {
-      return '${rule.timesPerWeek}× / Woche';
-    }
-    if (rule.weekdays.length == 7) return AppText.daily;
-    return (rule.weekdays.toList()..sort())
-        .map((w) => AppText.weekdayShort[w - 1])
-        .join(', ');
-  }
+class _NightHeader extends StatelessWidget {
+  const _NightHeader({required this.isCompact});
+
+  final bool isCompact;
 
   @override
   Widget build(BuildContext context) {
-    final category = controller.categoryById(definition.categoryId);
-    final inactive = definition.isPaused || definition.isArchived;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Gute Nacht!',
+                style: TextStyle(
+                  color: const Color(0xFFEEF4FF),
+                  fontSize: isCompact ? 22 : 28,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Bleib dran. Große Ziele brauchen Zeit.',
+                style: TextStyle(
+                  color: const Color(0xFF9AA6BC),
+                  fontSize: isCompact ? 11 : 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              'Donnerstag, 17. September 2026',
+              style: TextStyle(
+                color: const Color(0xFFEEF4FF),
+                fontSize: isCompact ? 10 : 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '„Disziplin heute. Ein stärkeres Ich morgen.“',
+              style: TextStyle(
+                color: const Color(0xFF8EA2BE),
+                fontSize: isCompact ? 8.5 : 10,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
-      child: Row(
+class _LevelCard extends StatelessWidget {
+  const _LevelCard({
+    required this.level,
+    required this.currentXp,
+    required this.targetXp,
+    required this.streak,
+    required this.completed,
+    required this.total,
+    required this.isCompact,
+  });
+
+  final int level;
+  final int currentXp;
+  final int targetXp;
+  final int streak;
+  final int completed;
+  final int total;
+  final bool isCompact;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = (currentXp / targetXp).clamp(0.0, 1.0);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF101C2E),
+        border: Border.all(color: const Color(0xFF243450)),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      padding: EdgeInsets.all(isCompact ? 14 : 16),
+      child: Column(
         children: [
+          Row(
+            children: [
+              Container(
+                width: isCompact ? 42 : 46,
+                height: isCompact ? 42 : 46,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF0B1220),
+                  shape: BoxShape.circle,
+                  border: Border.fromBorderSide(
+                    BorderSide(color: Color(0xFFE7C46A), width: 2),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.star_rounded,
+                  color: Color(0xFFE7C46A),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Level $level',
+                      style: TextStyle(
+                        color: const Color(0xFFEEF4FF),
+                        fontSize: isCompact ? 20 : 24,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      'Weiter auf deiner Reise',
+                      style: TextStyle(
+                        color: const Color(0xFF9AA6BC),
+                        fontSize: isCompact ? 11 : 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '$currentXp / $targetXp XP',
+                  style: const TextStyle(
+                    color: Color(0xFFF1D99A),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              Text(
+                'Nächstes Level in ${targetXp - currentXp} XP',
+                style: const TextStyle(
+                  color: Color(0xFF9AA6BC),
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
           Container(
-            width: 34,
-            height: 34,
+            height: 10,
             decoration: BoxDecoration(
-              color: category.color.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(9),
+              color: const Color(0xFF121F31),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(category.icon, size: 17, color: category.color),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(definition.title,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: inactive ? AppTheme.textMid : AppTheme.textHigh)),
-                Text(category.name,
-                    style: const TextStyle(
-                        color: AppTheme.textLow, fontSize: 12)),
-              ],
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: progress,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2BC5C),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
           ),
-          Text('+${definition.xp} XP',
-              style: const TextStyle(
-                  color: AppTheme.goldBright, fontWeight: FontWeight.w700)),
-          const SizedBox(width: 14),
-          SizedBox(
-            width: 88,
-            child: Text(_frequencyLabel(),
-                textAlign: TextAlign.right,
-                style: const TextStyle(color: AppTheme.textMid, fontSize: 12)),
-          ),
-          const SizedBox(width: 8),
-          Switch(
-            value: !inactive,
-            onChanged: (on) => controller.editDefinition(
-              definition.id,
-              isPaused: !on,
-              isArchived: false,
-            ),
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_horiz, size: 18, color: AppTheme.textLow),
-            onSelected: (value) {
-              switch (value) {
-                case 'edit':
-                  showTaskEditorSheet(context, controller,
-                      definition: definition);
-                case 'archive':
-                  controller.editDefinition(definition.id, isArchived: true);
-                case 'delete':
-                  controller.deleteDefinition(definition.id);
-              }
-            },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'edit', child: Text(AppText.edit)),
-              PopupMenuItem(value: 'archive', child: Text(AppText.archive)),
-              PopupMenuItem(value: 'delete', child: Text(AppText.delete)),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _Pill(label: '⏱ 0 Tage Streak', selected: streak > 0),
+              _Pill(label: '✓ $completed erledigt', selected: completed > 0),
+              _Pill(label: '🏆 $total Aufgaben', selected: total > 0),
             ],
           ),
         ],
@@ -269,66 +374,339 @@ class _HabitRow extends StatelessWidget {
   }
 }
 
-class _OneOffRow extends StatelessWidget {
-  const _OneOffRow({required this.controller, required this.occurrence});
+class _Pill extends StatelessWidget {
+  const _Pill({required this.label, required this.selected});
 
-  final MotivationController controller;
-  final TaskOccurrence occurrence;
+  final String label;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
-    final category = controller.categoryById(occurrence.categoryId);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: selected ? const Color(0xFF1A2940) : const Color(0xFF0F1B2A),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFF2C3E57)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Color(0xFFE9F1FF),
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class _TaskListPanel extends StatelessWidget {
+  const _TaskListPanel({
+    required this.rows,
+    required this.totalXp,
+    required this.filter,
+    required this.onFilterChanged,
+  });
+
+  final List<_HabitRowData> rows;
+  final int totalXp;
+  final _HabitFilter filter;
+  final void Function(_HabitFilter) onFilterChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final filters = [
+      _HabitFilter.alle,
+      _HabitFilter.taeglich,
+      _HabitFilter.woechentlich,
+      _HabitFilter.einmalig,
+      _HabitFilter.inaktiv,
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF101C2E),
+        border: Border.all(color: const Color(0xFF243450)),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.checklist_rounded, color: Color(0xFFE7C46A), size: 18),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Heutige Aufgaben',
+                  style: TextStyle(
+                    color: Color(0xFFEEF4FF),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              Text(
+                '0 von 7 Aufgaben erledigt',
+                style: const TextStyle(
+                  color: Color(0xFF9AA6BC),
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final item in filters)
+                GestureDetector(
+                  onTap: () => onFilterChanged(item),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: filter == item ? const Color(0xFF1C2C40) : const Color(0xFF0F1B2A),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: filter == item ? const Color(0xFF3A4F6E) : const Color(0xFF213250),
+                      ),
+                    ),
+                    child: Text(
+                      switch (item) {
+                        _HabitFilter.alle => 'Alle',
+                        _HabitFilter.taeglich => 'Täglich',
+                        _HabitFilter.woechentlich => 'Wöchentlich',
+                        _HabitFilter.einmalig => 'Einmalig',
+                        _HabitFilter.inaktiv => 'Inaktiv',
+                      },
+                      style: TextStyle(
+                        color: filter == item ? const Color(0xFFF1D99A) : const Color(0xFF9AA6BC),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...rows.take(7).map((task) => _HabitRow(task: task)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(Icons.local_fire_department_rounded, size: 14, color: Color(0xFFE7C46A)),
+              const SizedBox(width: 6),
+              const Text(
+                'Heute verdient:',
+                style: TextStyle(color: Color(0xFF9AA6BC), fontSize: 12),
+              ),
+              const Spacer(),
+              Text(
+                '$totalXp XP',
+                style: const TextStyle(
+                  color: Color(0xFFE7C46A),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HabitRow extends StatelessWidget {
+  const _HabitRow({required this.task});
+
+  final _HabitRowData task;
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 18,
+            height: 18,
             decoration: BoxDecoration(
-              color: category.color.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(9),
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(5),
+              border: Border.all(color: const Color(0xFFB9C5D9), width: 1.5),
             ),
-            child: Icon(category.icon, size: 17, color: category.color),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(occurrence.title,
-                    style: Theme.of(context).textTheme.titleSmall),
-                Text(category.name,
-                    style: const TextStyle(
-                        color: AppTheme.textLow, fontSize: 12)),
+                Text(
+                  task.title,
+                  style: const TextStyle(
+                    color: Color(0xFFEEF4FF),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  task.subtitle,
+                  style: const TextStyle(
+                    color: Color(0xFF7F8FAA),
+                    fontSize: 10,
+                  ),
+                ),
               ],
             ),
           ),
-          Text('+${occurrence.xp} XP',
-              style: const TextStyle(
-                  color: AppTheme.goldBright, fontWeight: FontWeight.w700)),
-          const SizedBox(width: 14),
-          SizedBox(
-            width: 88,
-            child: Text(
-              '${AppText.once} · ${occurrence.date.day}.${occurrence.date.month}.',
-              textAlign: TextAlign.right,
-              style: const TextStyle(color: AppTheme.textMid, fontSize: 12),
+          Text(
+            '+${task.xp} XP',
+            style: const TextStyle(
+              color: Color(0xFFE7C46A),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
             ),
           ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_horiz, size: 18, color: AppTheme.textLow),
-            onSelected: (value) {
-              if (value == 'edit') {
-                showTaskEditorSheet(context, controller, existing: occurrence);
-              } else if (value == 'delete') {
-                controller.removeOccurrence(occurrence.id);
-              }
-            },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'edit', child: Text(AppText.edit)),
-              PopupMenuItem(value: 'delete', child: Text(AppText.delete)),
+        ],
+      ),
+    );
+  }
+}
+
+class _RewardPanel extends StatelessWidget {
+  const _RewardPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final rewards = [
+      _RewardCard(
+        title: 'Kaffeepause',
+        subtitle: 'Freigeschaltet',
+        accent: const Color(0xFF6DD69A),
+        isActive: true,
+      ),
+      _RewardCard(
+        title: '30 Minuten Gaming-Zeit',
+        subtitle: 'Level 3 erforderlich',
+        accent: const Color(0xFF7DA4FF),
+        isActive: false,
+      ),
+      _RewardCard(
+        title: 'Eine Folge deiner Serie',
+        subtitle: 'Level 5 erforderlich',
+        accent: const Color(0xFFB2A1FF),
+        isActive: false,
+      ),
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF101C2E),
+        border: Border.all(color: const Color(0xFF243450)),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.emoji_events_rounded, color: Color(0xFFE7C46A), size: 18),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Freigeschaltete Belohnungen',
+                  style: TextStyle(
+                    color: Color(0xFFEEF4FF),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              Icon(Icons.arrow_forward_rounded, color: Color(0xFF9AA6BC)),
             ],
+          ),
+          const SizedBox(height: 12),
+          ...rewards,
+        ],
+      ),
+    );
+  }
+}
+
+class _RewardCard extends StatelessWidget {
+  const _RewardCard({
+    required this.title,
+    required this.subtitle,
+    required this.accent,
+    required this.isActive,
+  });
+
+  final String title;
+  final String subtitle;
+  final Color accent;
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0C1625),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF243450)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.local_cafe_rounded,
+              color: accent,
+              size: 16,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Color(0xFFEEF4FF),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Color(0xFF9AA6BC),
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: 18,
+            height: 18,
+            decoration: BoxDecoration(
+              color: isActive ? const Color(0xFF5FC989) : const Color(0xFF2A384D),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: const Icon(Icons.check_rounded, size: 12, color: Colors.white),
           ),
         ],
       ),

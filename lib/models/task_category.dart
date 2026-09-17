@@ -15,6 +15,7 @@ const Map<String, IconData> categoryIcons = {
   'creative': Icons.brush_outlined,
   'social': Icons.groups_outlined,
   'money': Icons.savings_outlined,
+  'shopping': Icons.shopping_bag_outlined,
   'star': Icons.star_border,
 };
 
@@ -62,13 +63,13 @@ class TaskCategory {
   }
 
   Map<String, Object?> toMap() => {
-        'id': id,
-        'name': name,
-        'colorValue': colorValue,
-        'iconKey': iconKey,
-        'sortOrder': sortOrder,
-        'isArchived': isArchived,
-      };
+    'id': id,
+    'name': name,
+    'colorValue': colorValue,
+    'iconKey': iconKey,
+    'sortOrder': sortOrder,
+    'isArchived': isArchived,
+  };
 
   factory TaskCategory.fromMap(Map<String, Object?> map) {
     return TaskCategory(
@@ -83,47 +84,54 @@ class TaskCategory {
 
   /// Seeded on first run.
   static List<TaskCategory> defaults() => const [
-        TaskCategory(
-          id: 'fitness',
-          name: 'Fitness',
-          colorValue: 0xFFEF6C4D,
-          iconKey: 'fitness',
-          sortOrder: 0,
-        ),
-        TaskCategory(
-          id: 'lernen',
-          name: 'Lernen',
-          colorValue: 0xFF4C8DFF,
-          iconKey: 'book',
-          sortOrder: 1,
-        ),
-        TaskCategory(
-          id: 'coding',
-          name: 'Coding',
-          colorValue: 0xFF7C4DFF,
-          iconKey: 'code',
-          sortOrder: 2,
-        ),
-        TaskCategory(
-          id: 'achtsamkeit',
-          name: 'Achtsamkeit',
-          colorValue: 0xFF26A69A,
-          iconKey: 'mindful',
-          sortOrder: 3,
-        ),
-        TaskCategory(
-          id: 'haushalt',
-          name: 'Haushalt',
-          colorValue: 0xFFFFB300,
-          iconKey: 'home',
-          sortOrder: 4,
-        ),
-        TaskCategory(
-          id: 'gesundheit',
-          name: 'Gesundheit',
-          colorValue: 0xFF66BB6A,
-          iconKey: 'health',
-          sortOrder: 5,
-        ),
-      ];
+    TaskCategory(
+      id: 'fitness',
+      name: 'Fitness',
+      colorValue: 0xFFEF6C4D,
+      iconKey: 'fitness',
+      sortOrder: 0,
+    ),
+    TaskCategory(
+      id: 'lernen',
+      name: 'Lernen',
+      colorValue: 0xFF4C8DFF,
+      iconKey: 'book',
+      sortOrder: 1,
+    ),
+    TaskCategory(
+      id: 'coding',
+      name: 'Coding',
+      colorValue: 0xFF7C4DFF,
+      iconKey: 'code',
+      sortOrder: 2,
+    ),
+    TaskCategory(
+      id: 'achtsamkeit',
+      name: 'Achtsamkeit',
+      colorValue: 0xFF26A69A,
+      iconKey: 'mindful',
+      sortOrder: 3,
+    ),
+    TaskCategory(
+      id: 'haushalt',
+      name: 'Haushalt',
+      colorValue: 0xFFFFB300,
+      iconKey: 'home',
+      sortOrder: 4,
+    ),
+    TaskCategory(
+      id: 'gesundheit',
+      name: 'Gesundheit',
+      colorValue: 0xFF66BB6A,
+      iconKey: 'health',
+      sortOrder: 5,
+    ),
+    TaskCategory(
+      id: 'shopping',
+      name: 'Einkaufen',
+      colorValue: 0xFFFF6B9D,
+      iconKey: 'shopping',
+      sortOrder: 6,
+    ),
+  ];
 }

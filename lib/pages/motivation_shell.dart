@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../domain/achievements.dart';
 import '../l10n/app_text.dart';
-import '../l10n/quotes.dart';
 import '../state/motivation_controller.dart';
 import '../theme/app_theme.dart';
-import '../theme/atmosphere.dart';
 import '../widgets/app_toast.dart';
 import 'achievements_page.dart';
 import 'dashboard_page.dart';
@@ -26,19 +24,28 @@ class MotivationShell extends StatefulWidget {
 }
 
 class _MotivationShellState extends State<MotivationShell> {
-  int _index = 0;
+  int _index = 3;
 
   static const _destinations = <_Destination>[
     _Destination(AppText.dashboard, Icons.explore_outlined, Icons.explore),
     _Destination(AppText.today, Icons.bolt_outlined, Icons.bolt),
-    _Destination(AppText.weekPlanning, Icons.calendar_month_outlined,
-        Icons.calendar_month),
+    _Destination(
+      AppText.weekPlanning,
+      Icons.calendar_month_outlined,
+      Icons.calendar_month,
+    ),
     _Destination(AppText.habits, Icons.autorenew_outlined, Icons.autorenew),
-    _Destination(AppText.rewards, Icons.card_giftcard_outlined,
-        Icons.card_giftcard),
+    _Destination(
+      AppText.rewards,
+      Icons.card_giftcard_outlined,
+      Icons.card_giftcard,
+    ),
     _Destination(AppText.statistics, Icons.insights_outlined, Icons.insights),
     _Destination(
-        AppText.achievements, Icons.emoji_events_outlined, Icons.emoji_events),
+      AppText.achievements,
+      Icons.emoji_events_outlined,
+      Icons.emoji_events,
+    ),
     _Destination(AppText.settings, Icons.settings_outlined, Icons.settings),
   ];
 
@@ -124,19 +131,27 @@ class _MotivationShellState extends State<MotivationShell> {
         final page = _pageFor(_index);
 
         if (wide) {
-          return Scaffold(
-            body: Row(
-              children: [
-                _Sidebar(
-                  destinations: _destinations,
-                  selectedIndex: _index,
-                  onSelect: _select,
-                  extended: constraints.maxWidth >= 1240,
-                  showAtmosphere: widget.controller.showAtmosphere,
+          return DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFFF1B77C), Color(0xFF75AEEB)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+            child: SafeArea(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(22),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1200),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(30),
+                      child: Material(color: AppTheme.bg, child: page),
+                    ),
+                  ),
                 ),
-                const VerticalDivider(width: 1),
-                Expanded(child: page),
-              ],
+              ),
             ),
           );
         }
@@ -157,169 +172,6 @@ class _MotivationShellState extends State<MotivationShell> {
           ),
         );
       },
-    );
-  }
-}
-
-class _Sidebar extends StatelessWidget {
-  const _Sidebar({
-    required this.destinations,
-    required this.selectedIndex,
-    required this.onSelect,
-    required this.extended,
-    required this.showAtmosphere,
-  });
-
-  final List<_Destination> destinations;
-  final int selectedIndex;
-  final void Function(int) onSelect;
-  final bool extended;
-  final bool showAtmosphere;
-
-  @override
-  Widget build(BuildContext context) {
-    final width = extended ? 236.0 : 76.0;
-    return Container(
-      width: width,
-      color: AppTheme.bgRaised,
-      child: Stack(
-        children: [
-          if (showAtmosphere)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: 220,
-              child: ShaderMask(
-                shaderCallback: (rect) => const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.white],
-                  stops: [0.0, 0.7],
-                ).createShader(rect),
-                blendMode: BlendMode.dstIn,
-                child: const AtmosphereBackground(
-                    seed: 19, glowAlignment: Alignment(0, 1.2)),
-              ),
-            ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: EdgeInsets.fromLTRB(extended ? 18 : 0, 20, 0, 18),
-                child: Row(
-                  mainAxisAlignment: extended
-                      ? MainAxisAlignment.start
-                      : MainAxisAlignment.center,
-                  children: [
-                    const CompassMark(size: 30),
-                    if (extended) ...[
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(AppText.appName,
-                              style: TextStyle(
-                                fontFamilyFallback: AppTheme.serif,
-                                fontSize: 20,
-                                color: AppTheme.textHigh,
-                                fontWeight: FontWeight.w600,
-                              )),
-                          const Text(AppText.appTagline,
-                              style: TextStyle(
-                                  color: AppTheme.textLow,
-                                  fontSize: 11,
-                                  letterSpacing: 0.5)),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              Expanded(
-                child: ListView(
-                  padding: EdgeInsets.symmetric(horizontal: extended ? 10 : 8),
-                  children: [
-                    for (var i = 0; i < destinations.length; i++)
-                      _NavItem(
-                        destination: destinations[i],
-                        selected: i == selectedIndex,
-                        extended: extended,
-                        onTap: () => onSelect(i),
-                      ),
-                  ],
-                ),
-              ),
-              if (extended)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),
-                  child: Text(
-                    '„${quoteOfTheDay(DateTime.now(), slot: 5)}"',
-                    style: AppTheme.quote.copyWith(fontSize: 11.5),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.destination,
-    required this.selected,
-    required this.extended,
-    required this.onTap,
-  });
-
-  final _Destination destination;
-  final bool selected;
-  final bool extended;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Material(
-        color: selected ? AppTheme.gold.withValues(alpha: 0.14) : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-                horizontal: extended ? 12 : 0, vertical: 11),
-            child: Row(
-              mainAxisAlignment: extended
-                  ? MainAxisAlignment.start
-                  : MainAxisAlignment.center,
-              children: [
-                Icon(
-                  selected
-                      ? destination.selectedIcon
-                      : destination.icon,
-                  size: 20,
-                  color: selected ? AppTheme.goldBright : AppTheme.textLow,
-                ),
-                if (extended) ...[
-                  const SizedBox(width: 12),
-                  Text(
-                    destination.label,
-                    style: TextStyle(
-                      color: selected ? AppTheme.goldBright : AppTheme.textMid,
-                      fontWeight:
-                          selected ? FontWeight.w700 : FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

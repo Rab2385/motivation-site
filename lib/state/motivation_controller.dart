@@ -21,8 +21,7 @@ import '../util/dates.dart';
 /// The single in-memory hub. Holds the loaded lists, exposes read selectors
 /// backed by `lib/domain/`, and forwards every write to [PlanService].
 class MotivationController extends ChangeNotifier {
-  MotivationController(this._database)
-      : _backup = BackupService(_database);
+  MotivationController(this._database) : _backup = BackupService(_database);
 
   final MotivationDatabase _database;
   final BackupService _backup;
@@ -127,6 +126,34 @@ class MotivationController extends ChangeNotifier {
       await _database.saveSetting('rewardsSeeded', true);
     }
 
+    // Seed predefined household quest templates on first run
+    final householdQuestsSeeded =
+        snapshot.settings['householdQuestsSeeded'] as bool? ?? false;
+    if (_definitions.isEmpty && !householdQuestsSeeded) {
+      // Seed household quests
+      for (final definition in TaskDefinition.defaultHouseholdQuests(
+        DateTime.now(),
+      )) {
+        _definitions.add(definition);
+        await _database.saveDefinition(definition);
+      }
+      // Seed fitness quests
+      for (final definition in TaskDefinition.defaultFitnessQuests(
+        DateTime.now(),
+      )) {
+        _definitions.add(definition);
+        await _database.saveDefinition(definition);
+      }
+      // Seed learning quests
+      for (final definition in TaskDefinition.defaultLearningQuests(
+        DateTime.now(),
+      )) {
+        _definitions.add(definition);
+        await _database.saveDefinition(definition);
+      }
+      await _database.saveSetting('householdQuestsSeeded', true);
+    }
+
     _plan = PlanService(
       database: _database,
       categories: _categories,
@@ -168,8 +195,8 @@ class MotivationController extends ChangeNotifier {
   String get languageCode => 'de';
 
   List<TaskCategory> get categories => List.unmodifiable(
-        [..._categories]..sort((a, b) => a.sortOrder.compareTo(b.sortOrder)),
-      );
+    [..._categories]..sort((a, b) => a.sortOrder.compareTo(b.sortOrder)),
+  );
 
   List<TaskCategory> get activeCategories =>
       categories.where((c) => !c.isArchived).toList();
@@ -193,8 +220,9 @@ class MotivationController extends ChangeNotifier {
   List<TaskOccurrence> get allOccurrences => List.unmodifiable(_occurrences);
 
   List<TaskDefinition> get activeDefinitions =>
-      _definitions.where((d) => !d.isArchived).toList()
-        ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+      _definitions.where((d) => !d.isArchived).toList()..sort(
+        (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+      );
 
   /// Fixed-weekday and paused definitions the "add existing" picker offers.
   List<TaskDefinition> get attachableDefinitions => activeDefinitions
@@ -202,25 +230,29 @@ class MotivationController extends ChangeNotifier {
       .toList();
 
   List<TaskDefinition> get quotaDefinitions => _definitions
-      .where((d) => d.isActive && d.recurrence.kind == RecurrenceKind.timesPerWeek)
+      .where(
+        (d) => d.isActive && d.recurrence.kind == RecurrenceKind.timesPerWeek,
+      )
       .toList();
 
   /// Future one-off tasks (no definition), for the "Einmalig" habits filter.
   List<TaskOccurrence> get upcomingOneOffs {
-    final list = _occurrences
-        .where((o) =>
-            o.sourceDefinitionId == null &&
-            !o.isCompleted &&
-            !o.isSkipped &&
-            !o.date.isBefore(today))
-        .toList()
-      ..sort((a, b) => a.date.compareTo(b.date));
+    final list =
+        _occurrences
+            .where(
+              (o) =>
+                  o.sourceDefinitionId == null &&
+                  !o.isCompleted &&
+                  !o.isSkipped &&
+                  !o.date.isBefore(today),
+            )
+            .toList()
+          ..sort((a, b) => a.date.compareTo(b.date));
     return list;
   }
 
-  List<Proposal> get pendingProposals => _proposals
-      .where((p) => p.status == ProposalStatus.pending)
-      .toList();
+  List<Proposal> get pendingProposals =>
+      _proposals.where((p) => p.status == ProposalStatus.pending).toList();
 
   List<WeekTemplate> get templates => List.unmodifiable(_templates);
 
@@ -239,7 +271,8 @@ class MotivationController extends ChangeNotifier {
   /// by ascending required level.
   List<Reward> get rewards {
     final level = levelProgress.level;
-    final list = [..._rewards]..sort((a, b) {
+    final list = [..._rewards]
+      ..sort((a, b) {
         final aUnlocked = a.isUnlocked(level);
         final bUnlocked = b.isUnlocked(level);
         if (aUnlocked != bUnlocked) return aUnlocked ? -1 : 1;
@@ -251,16 +284,12 @@ class MotivationController extends ChangeNotifier {
   List<Reward> get unlockedRewards =>
       rewards.where((r) => r.isUnlocked(levelProgress.level)).toList();
 
-  bool rewardUnlocked(Reward reward) =>
-      reward.isUnlocked(levelProgress.level);
+  bool rewardUnlocked(Reward reward) => reward.isUnlocked(levelProgress.level);
 
   List<Reward> takeRewardToasts() {
     final ids = List<String>.from(_pendingRewardToasts);
     _pendingRewardToasts.clear();
-    return [
-      for (final id in ids)
-        ..._rewards.where((r) => r.id == id),
-    ];
+    return [for (final id in ids) ..._rewards.where((r) => r.id == id)];
   }
 
   Set<String> _currentlyUnlockedRewardIds() {
@@ -285,9 +314,9 @@ class MotivationController extends ChangeNotifier {
     final byState = rank(a).compareTo(rank(b));
     if (byState != 0) return byState;
 
-    final byCategory = categoryById(a.categoryId)
-        .sortOrder
-        .compareTo(categoryById(b.categoryId).sortOrder);
+    final byCategory = categoryById(
+      a.categoryId,
+    ).sortOrder.compareTo(categoryById(b.categoryId).sortOrder);
     if (byCategory != 0) return byCategory;
 
     final byXp = b.xp.compareTo(a.xp);
@@ -346,10 +375,10 @@ class MotivationController extends ChangeNotifier {
   }
 
   DayWorkload workloadForDate(DateTime date) => workloadForDay(
-        date: date,
-        occurrences: _occurrences,
-        dayTargets: _dayTargetXp,
-      );
+    date: date,
+    occurrences: _occurrences,
+    dayTargets: _dayTargetXp,
+  );
 
   /// Task XP completed on [date]; excludes the perfect-day bonus.
   int completedXpForDate(DateTime date) => workloadForDate(date).completedXp;
@@ -367,8 +396,9 @@ class MotivationController extends ChangeNotifier {
   }
 
   StreakInfo streakFor(String definitionId) {
-    final definition =
-        _definitions.where((d) => d.id == definitionId).firstOrNull;
+    final definition = _definitions
+        .where((d) => d.id == definitionId)
+        .firstOrNull;
     if (definition == null) return const StreakInfo.empty();
     return computeStreak(
       definition: definition,
@@ -379,39 +409,43 @@ class MotivationController extends ChangeNotifier {
   }
 
   StatsSnapshot get statsSnapshot => buildStatsSnapshot(
-        occurrences: _occurrences,
-        definitions: _definitions,
-        today: today,
-        perfectDayBonus: _perfectDayBonus,
-        graceLimit: _graceLimit,
-        levelCurve: _levelCurve,
-      );
+    occurrences: _occurrences,
+    definitions: _definitions,
+    today: today,
+    perfectDayBonus: _perfectDayBonus,
+    graceLimit: _graceLimit,
+    levelCurve: _levelCurve,
+  );
 
   PeriodStats periodStats(StatsPeriod period) => computePeriodStats(
-        occurrences: _occurrences,
-        today: today,
-        period: period,
-        perfectDayBonus: _perfectDayBonus,
-      );
+    occurrences: _occurrences,
+    today: today,
+    period: period,
+    perfectDayBonus: _perfectDayBonus,
+  );
 
   /// Weekly completion count for a `timesPerWeek` definition, current week.
   int quotaProgress(String definitionId) {
     final def = _definitions.where((d) => d.id == definitionId).firstOrNull;
     if (def == null) return 0;
     return _occurrences
-        .where((o) =>
-            o.sourceDefinitionId == definitionId &&
-            o.isFullyCompleted &&
-            isSameWeek(o.date, today))
+        .where(
+          (o) =>
+              o.sourceDefinitionId == definitionId &&
+              o.isFullyCompleted &&
+              isSameWeek(o.date, today),
+        )
         .length;
   }
 
   int quotaPlaced(String definitionId, int weekOffset) {
     final week = weekDays(weekOffset);
     return _occurrences
-        .where((o) =>
-            o.sourceDefinitionId == definitionId &&
-            week.any((day) => isSameDay(day, o.date)))
+        .where(
+          (o) =>
+              o.sourceDefinitionId == definitionId &&
+              week.any((day) => isSameDay(day, o.date)),
+        )
         .length;
   }
 
@@ -644,7 +678,11 @@ class MotivationController extends ChangeNotifier {
     required int colorValue,
     required String iconKey,
   }) async {
-    await _plan.addCategory(name: name, colorValue: colorValue, iconKey: iconKey);
+    await _plan.addCategory(
+      name: name,
+      colorValue: colorValue,
+      iconKey: iconKey,
+    );
     await _afterWrite();
   }
 
@@ -741,7 +779,8 @@ class MotivationController extends ChangeNotifier {
 
   Future<void> setDayTargetXp(int weekdayIndex, int value) async {
     if (weekdayIndex < 0 || weekdayIndex > 6) return;
-    _dayTargetXp = List.of(_dayTargetXp)..[weekdayIndex] = value.clamp(0, 100000);
+    _dayTargetXp = List.of(_dayTargetXp)
+      ..[weekdayIndex] = value.clamp(0, 100000);
     notifyListeners();
     await _database.saveSetting('dayTargetXp', _dayTargetXp);
   }
