@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../domain/achievements.dart';
 import '../l10n/app_text.dart';
+import '../state/home_nav_state.dart';
 import '../state/motivation_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_toast.dart';
-import 'achievements_page.dart';
-import 'dashboard_page.dart';
-import 'habits_page.dart';
-import 'rewards_page.dart';
-import 'settings_page.dart';
-import 'statistics_page.dart';
-import 'today_page.dart';
+import '../widgets/task_editor_sheet.dart';
+import '../widgets/terminal_widgets.dart';
+import 'habits_home_page.dart';
+import 'help_page.dart';
+import 'profile_page.dart';
+import 'stats_page.dart';
+import 'system_page.dart';
 import 'week_plan_page.dart';
 
 class MotivationShell extends StatefulWidget {
@@ -24,30 +26,9 @@ class MotivationShell extends StatefulWidget {
 }
 
 class _MotivationShellState extends State<MotivationShell> {
-  int _index = 3;
-
-  static const _destinations = <_Destination>[
-    _Destination(AppText.dashboard, Icons.explore_outlined, Icons.explore),
-    _Destination(AppText.today, Icons.bolt_outlined, Icons.bolt),
-    _Destination(
-      AppText.weekPlanning,
-      Icons.calendar_month_outlined,
-      Icons.calendar_month,
-    ),
-    _Destination(AppText.habits, Icons.autorenew_outlined, Icons.autorenew),
-    _Destination(
-      AppText.rewards,
-      Icons.card_giftcard_outlined,
-      Icons.card_giftcard,
-    ),
-    _Destination(AppText.statistics, Icons.insights_outlined, Icons.insights),
-    _Destination(
-      AppText.achievements,
-      Icons.emoji_events_outlined,
-      Icons.emoji_events,
-    ),
-    _Destination(AppText.settings, Icons.settings_outlined, Icons.settings),
-  ];
+  int _index = 0;
+  final HomeNavState _nav = HomeNavState();
+  final FocusNode _keyboardFocus = FocusNode();
 
   @override
   void initState() {
@@ -58,6 +39,8 @@ class _MotivationShellState extends State<MotivationShell> {
   @override
   void dispose() {
     widget.controller.removeListener(_onControllerChanged);
+    _keyboardFocus.dispose();
+    _nav.dispose();
     super.dispose();
   }
 
@@ -68,9 +51,9 @@ class _MotivationShellState extends State<MotivationShell> {
       showQuestToast(
         context,
         title: AppText.perfectDayBonusToast,
-        subtitle: '+${widget.controller.perfectDayBonus} XP Bonus',
+        subtitle: '+${widget.controller.perfectDayBonus} XP bonus',
         icon: Icons.wb_sunny,
-        accent: AppTheme.goldBright,
+        accent: AppTheme.amberBright,
       );
     }
     final achievements = {for (final a in achievementCatalogue) a.id: a};
@@ -79,19 +62,19 @@ class _MotivationShellState extends State<MotivationShell> {
       if (achievement == null) continue;
       showQuestToast(
         context,
-        title: 'Erfolg freigeschaltet',
+        title: 'Achievement unlocked',
         subtitle: achievement.title,
         icon: achievement.icon,
-        accent: AppTheme.goldBright,
+        accent: AppTheme.amberBright,
       );
     }
     for (final reward in widget.controller.takeRewardToasts()) {
       showQuestToast(
         context,
-        title: 'Belohnung freigeschaltet',
+        title: 'Reward unlocked',
         subtitle: reward.title,
         icon: reward.icon,
-        accent: AppTheme.goldBright,
+        accent: AppTheme.amberBright,
       );
     }
   }
@@ -100,85 +83,276 @@ class _MotivationShellState extends State<MotivationShell> {
     final controller = widget.controller;
     switch (index) {
       case 0:
-        return DashboardPage(controller: controller, onOpenTab: _select);
+        return HabitsHomePage(controller: controller, nav: _nav);
       case 1:
-        return TodayPage(controller: controller);
+        return StatsPage(controller: controller);
       case 2:
-        return WeekPlanPage(controller: controller);
+        return ProfilePage(controller: controller);
       case 3:
-        return HabitsPage(controller: controller);
-      case 4:
-        return RewardsPage(controller: controller);
-      case 5:
-        return StatisticsPage(controller: controller);
-      case 6:
-        return AchievementsPage(controller: controller);
+        return SystemPage(controller: controller);
       default:
-        return SettingsPage(controller: controller);
+        return const HelpPage();
     }
   }
 
-  void _select(int index) {
-    if (index == _index) return;
-    setState(() => _index = index);
+  void _select(int index) => setState(() => _index = index);
+
+  KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      _nav.shiftDay(-1);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowRight) {
+      _nav.shiftDay(1);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.digit1) {
+      _select(0);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.digit2) {
+      _select(1);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.digit3) {
+      _select(2);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.digit4) {
+      _select(3);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.digit5) {
+      _select(4);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.keyA) {
+      showTaskEditorSheet(context, widget.controller, date: _nav.date);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.slash || key == LogicalKeyboardKey.question) {
+      _select(4);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 900;
+        final wide = constraints.maxWidth >= 760;
         final page = _pageFor(_index);
 
-        if (wide) {
-          return DecoratedBox(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFFF1B77C), Color(0xFF75AEEB)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-            child: SafeArea(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(22),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1200),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(30),
-                      child: Material(color: AppTheme.bg, child: page),
+        final body = wide
+            ? Column(
+                children: [
+                  _TopBar(
+                    selected: _index,
+                    onSelect: _select,
+                    onOpenPlanner: () => _openPlanner(context),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: page,
                     ),
                   ),
-                ),
-              ),
-            ),
-          );
-        }
+                  const KeyboardHintBar(hints: [
+                    ('?', 'help'),
+                    ('←→', 'day'),
+                    ('1-5', 'menu'),
+                    ('a', 'add habit'),
+                  ]),
+                ],
+              )
+            : Column(
+                children: [
+                  _MobileTopBar(
+                    controller: widget.controller,
+                    onOpenPlanner: () => _openPlanner(context),
+                  ),
+                  Expanded(child: Padding(padding: const EdgeInsets.only(top: 8), child: page)),
+                ],
+              );
 
-        return Scaffold(
-          body: page,
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _index,
-            onDestinationSelected: _select,
-            destinations: [
-              for (final destination in _destinations)
-                NavigationDestination(
-                  icon: Icon(destination.icon),
-                  selectedIcon: Icon(destination.selectedIcon),
-                  label: destination.label,
+        final scaffold = Scaffold(
+          body: body,
+          bottomNavigationBar: wide
+              ? null
+              : NavigationBar(
+                  selectedIndex: _index > 2 ? 0 : _index,
+                  onDestinationSelected: _select,
+                  destinations: const [
+                    NavigationDestination(
+                        icon: Icon(Icons.checklist_outlined),
+                        selectedIcon: Icon(Icons.checklist),
+                        label: AppText.habits),
+                    NavigationDestination(
+                        icon: Icon(Icons.insights_outlined),
+                        selectedIcon: Icon(Icons.insights),
+                        label: AppText.statistics),
+                    NavigationDestination(
+                        icon: Icon(Icons.person_outline),
+                        selectedIcon: Icon(Icons.person),
+                        label: AppText.profile),
+                  ],
                 ),
-            ],
-          ),
+        );
+
+        if (!wide) return scaffold;
+
+        return Focus(
+          focusNode: _keyboardFocus,
+          autofocus: true,
+          onKeyEvent: _handleKey,
+          child: scaffold,
         );
       },
     );
   }
+
+  void _openPlanner(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (context) => WeekPlanPage(controller: widget.controller),
+    ));
+  }
 }
 
-class _Destination {
-  const _Destination(this.label, this.icon, this.selectedIcon);
-  final String label;
-  final IconData icon;
-  final IconData selectedIcon;
+class _TopBar extends StatelessWidget {
+  const _TopBar({required this.selected, required this.onSelect, required this.onOpenPlanner});
+
+  final int selected;
+  final ValueChanged<int> onSelect;
+  final VoidCallback onOpenPlanner;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppTheme.bgRaised,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              border: Border.all(color: AppTheme.amber),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Text('Q',
+                style: TextStyle(
+                    fontFamilyFallback: AppTheme.mono,
+                    color: AppTheme.amberBright,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13)),
+          ),
+          const SizedBox(width: 8),
+          const Text(AppText.appName,
+              style: TextStyle(
+                  fontFamilyFallback: AppTheme.mono,
+                  color: AppTheme.textHigh,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15)),
+          const SizedBox(width: 6),
+          const Text('[beta]', style: TextStyle(color: AppTheme.textLow, fontSize: 11)),
+          const SizedBox(width: 28),
+          for (var i = 0; i < 5; i++) _NavLabel(index: i, selected: selected == i, onTap: onSelect),
+          const Spacer(),
+          IconButton(
+            tooltip: 'weekly planner',
+            onPressed: onOpenPlanner,
+            icon: const Icon(Icons.calendar_month_outlined, size: 19, color: AppTheme.textMid),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NavLabel extends StatelessWidget {
+  const _NavLabel({required this.index, required this.selected, required this.onTap});
+  final int index;
+  final bool selected;
+  final ValueChanged<int> onTap;
+
+  static const _labels = [
+    AppText.habits,
+    AppText.statistics,
+    AppText.profile,
+    AppText.settings,
+    AppText.help,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => onTap(index),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${_labels[index]} ▾',
+              style: TextStyle(
+                fontFamilyFallback: AppTheme.mono,
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                color: selected ? AppTheme.amberBright : AppTheme.textMid,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Container(
+              height: 2,
+              width: 26,
+              color: selected ? AppTheme.amber : Colors.transparent,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileTopBar extends StatelessWidget {
+  const _MobileTopBar({required this.controller, required this.onOpenPlanner});
+
+  final MotivationController controller;
+  final VoidCallback onOpenPlanner;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 8, 0),
+        child: Row(
+          children: [
+            Text('[h] ${AppText.appName}',
+                style: const TextStyle(
+                    fontFamilyFallback: AppTheme.mono,
+                    color: AppTheme.textHigh,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14)),
+            const Spacer(),
+            IconButton(
+              onPressed: onOpenPlanner,
+              icon: const Icon(Icons.calendar_month_outlined, size: 20, color: AppTheme.textMid),
+            ),
+            IconButton(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) => SystemPage(controller: controller))),
+              icon: const Icon(Icons.settings_outlined, size: 20, color: AppTheme.textMid),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

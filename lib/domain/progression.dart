@@ -5,11 +5,11 @@
 /// L6 = 1000, L10 = 2700). The [LevelCurve] setting scales the whole curve.
 library;
 
-/// How steeply XP requirements grow. Chosen in Einstellungen → Gamification.
+/// How steeply XP requirements grow. Chosen in System → Gamification.
 enum LevelCurve {
-  sanft(factor: 0.7, label: 'Sanft'),
-  standard(factor: 1.0, label: 'Standard (empfohlen)'),
-  steil(factor: 1.4, label: 'Steil');
+  gentle(factor: 0.7, label: 'Gentle'),
+  standard(factor: 1.0, label: 'Standard (recommended)'),
+  steep(factor: 1.4, label: 'Steep');
 
   const LevelCurve({required this.factor, required this.label});
 

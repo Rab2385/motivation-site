@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motivation/data/motivation_database.dart';
+import 'package:motivation/domain/habit_target.dart';
 import 'package:motivation/models/proposal.dart';
 import 'package:motivation/models/recurrence_rule.dart';
 import 'package:motivation/models/reward.dart';
@@ -233,6 +234,67 @@ void main() {
           templateId: template.id, weekStartDate: monday);
       expect(result.added, 0);
       expect(result.skipped, 1);
+    });
+  });
+
+  group('sections and quantity targets', () {
+    test('addOneOff persists the section and target', () async {
+      await plan.addOneOff(
+        date: day(0),
+        title: 'Sleep',
+        categoryId: 'health',
+        xp: 30,
+        section: 'Morning',
+        target: const HabitTarget(amount: 7, unit: TargetUnit.hours),
+      );
+      final saved = occurrences.single;
+      expect(saved.section, 'Morning');
+      expect(saved.target, const HabitTarget(amount: 7, unit: TargetUnit.hours));
+      expect(saved.loggedAmount, 0);
+    });
+
+    test('logProgress below target updates progress without completing', () async {
+      await plan.addOneOff(
+        date: day(0),
+        title: 'Sleep',
+        categoryId: 'health',
+        xp: 30,
+        target: const HabitTarget(amount: 7, unit: TargetUnit.hours),
+      );
+      final id = occurrences.single.id;
+      await plan.logProgress(id, 5);
+      final updated = occurrences.single;
+      expect(updated.loggedAmount, 5);
+      expect(updated.isCompleted, isFalse);
+    });
+
+    test('logProgress reaching the target auto-completes for full xp', () async {
+      await plan.addOneOff(
+        date: day(0),
+        title: 'Sleep',
+        categoryId: 'health',
+        xp: 30,
+        target: const HabitTarget(amount: 7, unit: TargetUnit.hours),
+      );
+      final id = occurrences.single.id;
+      await plan.logProgress(id, 7);
+      final updated = occurrences.single;
+      expect(updated.isFullyCompleted, isTrue);
+      expect(updated.completion!.awardedXp, 30);
+    });
+
+    test('materialisation propagates section and target from the definition', () async {
+      await plan.createRecurring(
+        title: 'Deep work',
+        categoryId: 'work',
+        xp: 60,
+        section: 'Deep Work',
+        target: const HabitTarget(amount: 1.5, unit: TargetUnit.hours),
+        recurrence: RecurrenceRule.fixedWeekdays({monday.weekday}),
+      );
+      final generated = occurrences.firstWhere((o) => o.dateKey == dayKey(monday));
+      expect(generated.section, 'Deep Work');
+      expect(generated.target, const HabitTarget(amount: 1.5, unit: TargetUnit.hours));
     });
   });
 

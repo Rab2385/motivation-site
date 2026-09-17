@@ -28,7 +28,7 @@ Future<void> showAttachTaskSheet(
         child: candidates.isEmpty
             ? const Padding(
                 padding: EdgeInsets.all(24),
-                child: Text('Keine weiteren Gewohnheiten zum Hinzufügen.'),
+                child: Text('No other habits to attach.'),
               )
             : ListView(
                 shrinkWrap: true,
@@ -74,7 +74,7 @@ Future<AttachScope?> _askScope(BuildContext context, DateTime date) {
     builder: (context) => AlertDialog(
       title: const Text(AppText.attachScopeQuestion),
       content: Text(
-        'Diese Gewohnheit fällt sonst nicht auf $weekday.',
+        "This habit doesn't normally fall on $weekday.",
       ),
       actions: [
         TextButton(

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../domain/difficulty.dart';
+import '../domain/habit_target.dart';
 import '../util/dates.dart';
 import 'completion.dart';
 
@@ -29,7 +30,10 @@ class TaskOccurrence {
     required this.createdAt,
     required this.updatedAt,
     this.note = '',
+    this.section = '',
     this.difficulty,
+    this.target,
+    this.loggedAmount = 0,
     this.sourceDefinitionId,
     this.isForked = false,
     this.isSkipped = false,
@@ -43,9 +47,20 @@ class TaskOccurrence {
 
   final String title;
   final String note;
+
+  /// Time-of-day / routine grouping, snapshotted from the definition.
+  final String section;
+
   final String categoryId;
   final Difficulty? difficulty;
   final int xp;
+
+  /// Optional quantity/duration target (e.g. 7 hours, 7000 steps).
+  final HabitTarget? target;
+
+  /// Progress logged so far against [target]. Reaching it auto-completes
+  /// the occurrence; logging less just updates what the row shows.
+  final double loggedAmount;
 
   final OccurrenceOrigin origin;
 
@@ -68,6 +83,7 @@ class TaskOccurrence {
   bool get isCompleted => completion != null;
   bool get isFullyCompleted => completion?.isFull ?? false;
   bool get isOpen => !isCompleted && !isSkipped;
+  bool get hasTarget => target != null;
 
   /// XP that would be awarded for a full completion right now.
   int get effectiveXp => xp;
@@ -75,10 +91,14 @@ class TaskOccurrence {
   TaskOccurrence copyWith({
     String? title,
     String? note,
+    String? section,
     String? categoryId,
     Difficulty? difficulty,
     bool clearDifficulty = false,
     int? xp,
+    HabitTarget? target,
+    bool clearTarget = false,
+    double? loggedAmount,
     OccurrenceOrigin? origin,
     String? sourceDefinitionId,
     bool clearSource = false,
@@ -94,9 +114,12 @@ class TaskOccurrence {
       dateKey: dateKey ?? this.dateKey,
       title: title ?? this.title,
       note: note ?? this.note,
+      section: section ?? this.section,
       categoryId: categoryId ?? this.categoryId,
       difficulty: clearDifficulty ? null : (difficulty ?? this.difficulty),
       xp: xp ?? this.xp,
+      target: clearTarget ? null : (target ?? this.target),
+      loggedAmount: loggedAmount ?? this.loggedAmount,
       origin: origin ?? this.origin,
       sourceDefinitionId:
           clearSource ? null : (sourceDefinitionId ?? this.sourceDefinitionId),
@@ -116,9 +139,12 @@ class TaskOccurrence {
         'dateKey': dateKey,
         'title': title,
         'note': note,
+        'section': section,
         'categoryId': categoryId,
         'difficulty': difficulty?.name,
         'xp': xp,
+        'target': target?.toMap(),
+        'loggedAmount': loggedAmount,
         'origin': origin.name,
         'sourceDefinitionId': sourceDefinitionId,
         'isForked': isForked,
@@ -130,14 +156,20 @@ class TaskOccurrence {
 
   factory TaskOccurrence.fromMap(Map<String, Object?> map) {
     final completionMap = map['completion'];
+    final targetMap = map['target'];
     return TaskOccurrence(
       id: map['id']! as String,
       dateKey: map['dateKey']! as String,
       title: map['title']! as String,
       note: map['note'] as String? ?? '',
+      section: map['section'] as String? ?? '',
       categoryId: map['categoryId']! as String,
       difficulty: Difficulty.fromName(map['difficulty'] as String?),
       xp: (map['xp'] as num? ?? 0).toInt(),
+      target: targetMap is Map
+          ? HabitTarget.fromMap(targetMap.cast<String, Object?>())
+          : null,
+      loggedAmount: (map['loggedAmount'] as num? ?? 0).toDouble(),
       origin: OccurrenceOrigin.values.firstWhere(
         (value) => value.name == map['origin'],
         orElse: () => OccurrenceOrigin.oneOff,

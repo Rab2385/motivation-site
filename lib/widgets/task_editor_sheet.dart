@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../domain/difficulty.dart';
+import '../domain/habit_section.dart';
+import '../domain/habit_target.dart';
 import '../l10n/app_text.dart';
 import '../models/recurrence_rule.dart';
 import '../models/task_definition.dart';
@@ -55,6 +57,8 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
   late final TextEditingController _title;
   late final TextEditingController _note;
   late final TextEditingController _xp;
+  late final TextEditingController _section;
+  late final TextEditingController _targetAmount;
 
   late String _categoryId;
   Difficulty? _difficulty;
@@ -63,6 +67,8 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
   final Set<int> _weekdays = {};
   int _timesPerWeek = 3;
   bool _xpTouched = false;
+  bool _hasTarget = false;
+  TargetUnit _targetUnit = TargetUnit.minutes;
 
   bool get _isEditOccurrence => widget.existing != null;
   bool get _isEditDefinition => widget.definition != null;
@@ -75,6 +81,7 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
 
     _title = TextEditingController(text: source?.title ?? def?.title ?? '');
     _note = TextEditingController(text: source?.note ?? def?.note ?? '');
+    _section = TextEditingController(text: source?.section ?? def?.section ?? '');
     _categoryId = source?.categoryId ??
         def?.categoryId ??
         widget.controller.activeCategories.firstOrNull?.id ??
@@ -83,6 +90,13 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
     final initialXp = source?.xp ?? def?.xp ?? suggestedFor(_difficulty);
     _xp = TextEditingController(text: '$initialXp');
     _xpTouched = source != null || def != null;
+
+    final target = source?.target ?? def?.target;
+    _hasTarget = target != null;
+    _targetUnit = target?.unit ?? TargetUnit.minutes;
+    _targetAmount = TextEditingController(
+      text: target == null ? '' : _formatAmountInput(target.amount),
+    );
 
     if (def != null) {
       _recurring = true;
@@ -98,16 +112,21 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
     }
   }
 
+  String _formatAmountInput(double amount) =>
+      amount % 1 == 0 ? amount.toStringAsFixed(0) : amount.toString();
+
   @override
   void dispose() {
     _title.dispose();
     _note.dispose();
     _xp.dispose();
+    _section.dispose();
+    _targetAmount.dispose();
     super.dispose();
   }
 
   static int suggestedFor(Difficulty? difficulty) =>
-      difficulty?.defaultXp ?? Difficulty.mittel.defaultXp;
+      difficulty?.defaultXp ?? Difficulty.medium.defaultXp;
 
   void _pickDifficulty(Difficulty? value) {
     setState(() {
@@ -126,40 +145,57 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
     return true;
   }
 
+  HabitTarget? get _target {
+    if (!_hasTarget) return null;
+    final amount = double.tryParse(_targetAmount.text.trim());
+    if (amount == null || amount <= 0) return null;
+    return HabitTarget(amount: amount, unit: _targetUnit);
+  }
+
   Future<void> _save() async {
     final controller = widget.controller;
     final title = _title.text.trim();
     final note = _note.text.trim();
+    final section = _section.text.trim();
     final xp = int.tryParse(_xp.text.trim()) ?? suggestedFor(_difficulty);
+    final target = _target;
 
     if (_isEditOccurrence) {
       await controller.editOccurrence(
         widget.existing!.id,
         title: title,
         note: note,
+        section: section,
         categoryId: _categoryId,
         difficulty: _difficulty,
         clearDifficulty: _difficulty == null,
         xp: xp,
+        target: target,
+        clearTarget: target == null,
       );
     } else if (_isEditDefinition) {
       await controller.editDefinition(
         widget.definition!.id,
         title: title,
         note: note,
+        section: section,
         categoryId: _categoryId,
         difficulty: _difficulty,
         clearDifficulty: _difficulty == null,
         xp: xp,
+        target: target,
+        clearTarget: target == null,
         recurrence: _buildRecurrence(),
       );
     } else if (_recurring) {
       await controller.createRecurring(
         title: title,
         note: note,
+        section: section,
         categoryId: _categoryId,
         xp: xp,
         difficulty: _difficulty,
+        target: target,
         recurrence: _buildRecurrence(),
       );
     } else {
@@ -167,9 +203,11 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
         date: widget.date ?? controller.today,
         title: title,
         note: note,
+        section: section,
         categoryId: _categoryId,
         xp: xp,
         difficulty: _difficulty,
+        target: target,
       );
     }
     if (mounted) Navigator.of(context).pop();
@@ -206,6 +244,27 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
               autofocus: !_isEditOccurrence && !_isEditDefinition,
               decoration: const InputDecoration(labelText: AppText.title),
               onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _section,
+              decoration: const InputDecoration(
+                labelText: AppText.section,
+                hintText: AppText.sectionHint,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final preset in sectionPresets)
+                  ChoiceChip(
+                    label: Text(preset),
+                    selected: _section.text.trim() == preset,
+                    onSelected: (_) => setState(() => _section.text = preset),
+                  ),
+              ],
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
@@ -257,6 +316,40 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
               minLines: 1,
               maxLines: 3,
             ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text(AppText.targetLabel),
+              subtitle: Text(_hasTarget ? AppText.targetHint : AppText.noTarget),
+              value: _hasTarget,
+              onChanged: (value) => setState(() => _hasTarget = value),
+            ),
+            if (_hasTarget) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _targetAmount,
+                      decoration: const InputDecoration(labelText: AppText.amount),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  DropdownButton<TargetUnit>(
+                    value: _targetUnit,
+                    items: [
+                      for (final unit in TargetUnit.values)
+                        DropdownMenuItem(value: unit, child: Text(unit.suffix)),
+                    ],
+                    onChanged: (value) =>
+                        setState(() => _targetUnit = value ?? _targetUnit),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+            ],
             if (!_isEditOccurrence) ...[
               const SizedBox(height: 8),
               if (!_isEditDefinition)
@@ -328,7 +421,7 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text('$_timesPerWeek × / Woche',
+                child: Text('$_timesPerWeek × / week',
                     style: theme.textTheme.titleMedium),
               ),
               IconButton.filledTonal(

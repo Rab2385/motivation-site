@@ -12,7 +12,7 @@ Future<void> main() async {
   try {
     await controller.initialize();
   } catch (error, stackTrace) {
-    debugPrint('Motivation failed to start: $error\n$stackTrace');
+    debugPrint('Quest failed to start: $error\n$stackTrace');
     runApp(_StartupErrorApp(error: error));
     return;
   }
@@ -41,15 +41,15 @@ class _StartupErrorApp extends StatelessWidget {
                   const Icon(Icons.cloud_off_outlined, size: 48),
                   const SizedBox(height: 16),
                   Text(
-                    'Motivation konnte nicht gestartet werden.',
+                    'Quest failed to start.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Der lokale Speicher konnte nicht geöffnet werden. '
-                    'Im privaten Modus mancher Browser ist das erwartbar – '
-                    'dann bitte in einem normalen Fenster erneut öffnen.',
+                    'Local storage could not be opened. This is expected in '
+                    "some browsers' private mode — try a normal window "
+                    'instead.',
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),

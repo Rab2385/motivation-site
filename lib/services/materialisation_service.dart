@@ -70,10 +70,13 @@ MaterialisationResult runMaterialisation({
         upserts.add(existing.copyWith(
           title: definition.title,
           note: definition.note,
+          section: definition.section,
           categoryId: definition.categoryId,
           difficulty: definition.difficulty,
           clearDifficulty: definition.difficulty == null,
           xp: definition.xp,
+          target: definition.target,
+          clearTarget: definition.target == null,
           updatedAt: now,
         ));
       }
@@ -111,9 +114,11 @@ TaskOccurrence _fromDefinition(
     dateKey: dayKey(day),
     title: definition.title,
     note: definition.note,
+    section: definition.section,
     categoryId: definition.categoryId,
     difficulty: definition.difficulty,
     xp: definition.xp,
+    target: definition.target,
     origin: OccurrenceOrigin.recurring,
     sourceDefinitionId: definition.id,
     createdAt: now,
@@ -124,7 +129,9 @@ TaskOccurrence _fromDefinition(
 bool _differsFromDefinition(TaskOccurrence occurrence, TaskDefinition d) {
   return occurrence.title != d.title ||
       occurrence.note != d.note ||
+      occurrence.section != d.section ||
       occurrence.categoryId != d.categoryId ||
       occurrence.difficulty != d.difficulty ||
-      occurrence.xp != d.xp;
+      occurrence.xp != d.xp ||
+      occurrence.target != d.target;
 }

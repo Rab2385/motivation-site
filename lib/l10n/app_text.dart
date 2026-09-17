@@ -1,235 +1,261 @@
-/// All user-facing copy in one place (German only for V1). Centralised so a
-/// later `intl` migration has a single surface to translate.
+/// All user-facing copy in one place. Centralised so wording stays
+/// consistent and a later i18n pass has a single surface to translate.
 class AppText {
   const AppText._();
 
-  // App / navigation
+  // App / navigation (lowercase to match the CLI-menu style: "habits ▾")
   static const appName = 'Quest';
   static const appTagline = 'Habit Tracker';
-  static const dashboard = 'Dashboard';
-  static const today = 'Heute';
-  static const weekPlanning = 'Wochenplanung';
-  static const habits = 'Gewohnheiten';
-  static const rewards = 'Belohnungen';
-  static const statistics = 'Statistik';
-  static const achievements = 'Erfolge';
-  static const settings = 'Einstellungen';
+  static const dashboard = 'dashboard';
+  static const today = 'today';
+  static const weekPlanning = 'planner';
+  static const habits = 'habits';
+  static const rewards = 'rewards';
+  static const statistics = 'stats';
+  static const achievements = 'achievements';
+  static const settings = 'system';
+  static const profile = 'profile';
+  static const help = 'help';
 
   // Shared actions
-  static const save = 'Speichern';
-  static const cancel = 'Abbrechen';
-  static const delete = 'Löschen';
-  static const edit = 'Bearbeiten';
-  static const add = 'Hinzufügen';
-  static const close = 'Schließen';
-  static const apply = 'Übernehmen';
-  static const discard = 'Verwerfen';
-  static const move = 'Verschieben';
-  static const copy = 'Kopieren';
-  static const skip = 'Überspringen';
-  static const undo = 'Rückgängig';
+  static const save = 'Save';
+  static const cancel = 'Cancel';
+  static const delete = 'Delete';
+  static const edit = 'Edit';
+  static const add = 'Add';
+  static const close = 'Close';
+  static const apply = 'Apply';
+  static const discard = 'Discard';
+  static const move = 'Move';
+  static const copy = 'Copy';
+  static const skip = 'Skip';
+  static const undo = 'Undo';
 
-  // Quests
-  static const quest = 'Quest';
-  static const quests = 'Quests';
-  static const newOneOff = 'Neue Aufgabe';
-  static const newRecurring = 'Neue Gewohnheit';
-  static const attachExisting = 'Bestehende Gewohnheit hinzufügen';
-  static const title = 'Titel';
-  static const note = 'Notiz';
-  static const category = 'Kategorie';
-  static const difficulty = 'Schwierigkeit';
-  static const difficultyOptional = 'Schwierigkeit (optional)';
+  // Habits / quests
+  static const quest = 'habit';
+  static const quests = 'habits';
+  static const newOneOff = 'New task';
+  static const newRecurring = 'New habit';
+  static const attachExisting = 'Attach existing habit';
+  static const title = 'Title';
+  static const note = 'Note';
+  static const section = 'Section';
+  static const sectionHint = 'e.g. Morning, Deep Work, Wind Down';
+  static const category = 'Category';
+  static const difficulty = 'Difficulty';
+  static const difficultyOptional = 'Difficulty (optional)';
   static const xp = 'XP';
-  static const noQuestsToday = 'Heute sind keine Quests geplant.';
-  static const planYourWeek = 'Plane deine Woche in der Wochenplanung.';
-  static const completed = 'Erledigt';
-  static const skipped = 'Übersprungen';
-  static const missed = 'Verpasst';
-  static const plannedSkip = 'Geplant übersprungen';
+  static const noQuestsToday = 'Nothing scheduled today.';
+  static const planYourWeek = 'Add a habit or a one-off task to get started.';
+  static const completed = 'Done';
+  static const skipped = 'Skipped';
+  static const missed = 'Missed';
+  static const plannedSkip = 'skipped';
+
+  // Quantity targets
+  static const targetLabel = 'Target (optional)';
+  static const targetHint = 'e.g. 7 hours, 7000 steps, 30 minutes';
+  static const noTarget = 'No target — plain checkbox';
+  static const logProgress = 'Log progress';
+  static const amount = 'Amount';
 
   // Completion sheet
-  static const completeQuest = 'Quest abschließen';
-  static const howMuch = 'Wie viel hast du geschafft?';
-  static const fullyDone = 'Komplett erledigt';
-  static const partial = 'Teilweise';
-  static const optionalNote = 'Notiz (optional)';
+  static const completeQuest = 'Complete habit';
+  static const howMuch = 'How much did you get done?';
+  static const fullyDone = 'Fully done';
+  static const partial = 'Partial';
+  static const optionalNote = 'Note (optional)';
   static const partialHint =
-      'Teilweise erledigt zählt anteilig für XP, aber nicht für die Streak.';
+      'Partial credit awards XP proportionally but does not count for the streak.';
 
   // Recurrence
-  static const repeat = 'Wiederholung';
-  static const fixedWeekdays = 'Feste Wochentage';
-  static const timesPerWeek = 'X-mal pro Woche';
-  static const everyWeek = 'Jede Woche';
-  static const justThisWeek = 'Nur diese Woche';
-  static const attachScopeQuestion = 'Wie oft?';
-  static const attachOnce = 'Nur an diesem Tag';
-  static const attachEvery = 'Ab jetzt jeden ';
+  static const repeat = 'Repeats';
+  static const fixedWeekdays = 'Fixed weekdays';
+  static const timesPerWeek = 'X times a week';
+  static const everyWeek = 'Every week';
+  static const justThisWeek = 'Just this week';
+  static const attachScopeQuestion = 'How often?';
+  static const attachOnce = 'Just this day';
+  static const attachEvery = 'Every ';
 
-  // Week planning
-  static const thisWeek = 'Diese Woche';
-  static const nextWeek = 'Nächste Woche';
-  static const plannedXp = 'Geplante XP';
-  static const workload = 'Auslastung';
-  static const overloaded = 'Überladen';
-  static const dayLooksHeavy = 'Dieser Tag ist voll.';
-  static const moveSomethingTo = 'Etwas verschieben nach ';
-  static const weeklyChips = 'Wochenziele';
-  static const templates = 'Vorlagen';
-  static const saveAsTemplate = 'Als Vorlage speichern';
-  static const applyTemplate = 'Vorlage anwenden';
-  static const templateName = 'Name der Vorlage';
+  // Planner (formerly Wochenplanung)
+  static const thisWeek = 'This week';
+  static const nextWeek = 'Next week';
+  static const plannedXp = 'Planned XP';
+  static const workload = 'Load';
+  static const overloaded = 'Overloaded';
+  static const dayLooksHeavy = 'This day is packed.';
+  static const moveSomethingTo = 'Move something to ';
+  static const weeklyChips = 'Weekly targets';
+  static const templates = 'Templates';
+  static const saveAsTemplate = 'Save as template';
+  static const applyTemplate = 'Apply template';
+  static const templateName = 'Template name';
 
-  // Habits
-  static const currentStreak = 'Aktuelle Streak';
-  static const bestStreak = 'Beste Streak';
-  static const completionRate = 'Erfolgsquote';
-  static const pause = 'Pausieren';
-  static const resume = 'Fortsetzen';
-  static const archive = 'Archivieren';
-  static const noHabitsYet =
-      'Noch keine Gewohnheiten. Erstelle eine wiederkehrende Aufgabe.';
+  // Habits list
+  static const currentStreak = 'current streak';
+  static const bestStreak = 'best streak';
+  static const completionRate = 'completion rate';
+  static const pause = 'Pause';
+  static const resume = 'Resume';
+  static const archive = 'Archive';
+  static const noHabitsYet = 'No habits yet — add one below.';
 
-  // Dashboard
-  static const level = 'Level';
-  static const xpToNext = 'XP bis Level ';
-  static const activeStreaks = 'Aktive Streaks';
-  static const todaysProgress = 'Heute';
-  static const continueJourney = 'Weiter auf deiner Reise';
-  static const nextLevelIn = 'Nächstes Level in ';
-  static const todaysTasks = 'Heutige Aufgaben';
-  static const ofTasksDone = ' Aufgaben erledigt';
-  static const earnedToday = 'Heute verdient: ';
-  static const oneTaskToPerfect = 'Noch 1 Aufgabe bis zur perfekten Tagesbilanz!';
-  static const perfectDayReached = 'Perfekte Tagesbilanz erreicht!';
-  static const weekProgress = 'Wochenfortschritt';
-  static const totalTasksDone = ' erledigte Tasks gesamt';
-  static const youreDoingGreat = 'Du machst das großartig!';
-  static const doneTasks = 'Erledigte Tasks';
-  static const collectedXp = 'Gesammelte XP';
-  static const longestStreak = 'Längste Streak';
+  // Dashboard / home
+  static const level = 'level';
+  static const xpToNext = 'xp to next level: ';
+  static const activeStreaks = 'active streaks';
+  static const todaysProgress = 'today';
+  static const continueJourney = 'goal';
+  static const nextLevelIn = 'xp to next: ';
+  static const todaysTasks = 'habits';
+  static const ofTasksDone = ' done';
+  static const earnedToday = 'earned today: ';
+  static const oneTaskToPerfect = '1 left for a perfect day.';
+  static const perfectDayReached = 'perfect day!';
+  static const weekProgress = 'week';
+  static const totalTasksDone = ' total completions';
+  static const youreDoingGreat = 'keep going.';
+  static const doneTasks = 'done';
+  static const collectedXp = 'xp';
+  static const longestStreak = 'best streak';
 
   // Rewards
-  static const unlockedRewards = 'Freigeschaltete Belohnungen';
-  static const allRewards = 'Alle Belohnungen';
-  static const redeem = 'Einlösen';
-  static const rewardUnlockedYou = 'Du hast diese Belohnung freigeschaltet!';
-  static const unlockAtLevel = 'Freischaltung bei Level ';
-  static const newReward = 'Neue Belohnung';
-  static const requiredLevel = 'Benötigtes Level';
-  static const redeemedTimes = ' mal eingelöst';
-  static const rewardRedeemed = 'Belohnung eingelöst';
-  static const enjoyIt = 'Genieß es – du hast es dir verdient.';
+  static const unlockedRewards = 'unlocked rewards';
+  static const allRewards = 'all rewards';
+  static const redeem = 'Redeem';
+  static const rewardUnlockedYou = "You've unlocked this reward!";
+  static const unlockAtLevel = 'Unlocks at level ';
+  static const newReward = 'New reward';
+  static const requiredLevel = 'Required level';
+  static const redeemedTimes = ' redeemed';
+  static const rewardRedeemed = 'Reward redeemed';
+  static const enjoyIt = "Enjoy it — you've earned it.";
 
   // Dashboard – misc
-  static const dashboardSubline = 'Bleib dran. Große Ziele brauchen Zeit.';
-  static const unlockedRewardsChip = ' Freigeschaltete Belohnungen';
-  static const daysStreak = ' Tage Streak';
-  static const tasksDoneShort = ' Erledigte Tasks';
+  static const dashboardSubline = 'a bad day with habits beats a good day without them';
+  static const unlockedRewardsChip = ' rewards unlocked';
+  static const daysStreak = ' day streak';
+  static const tasksDoneShort = ' done';
 
-  // Heute
-  static const addTask = 'Aufgabe hinzufügen';
-  static const tasksDoneOf = ' Aufgaben erledigt';
-  static const xpPossible = ' XP möglich';
-  static const notPerfectJustConsistent =
-      'Du musst nicht perfekt sein. Nur konsequent.';
-  static const previousDay = 'Vorheriger Tag';
-  static const nextDay = 'Nächster Tag';
-  static const backToToday = 'Zurück zu heute';
-  static const pastDayReadOnly = 'Vergangene Tage sind schreibgeschützt.';
+  // Today
+  static const addTask = 'add task';
+  static const tasksDoneOf = ' done';
+  static const xpPossible = ' xp possible';
+  static const notPerfectJustConsistent = "the checkbox doesn't care if you feel like it.";
+  static const previousDay = 'Previous day';
+  static const nextDay = 'Next day';
+  static const backToToday = 'Back to today';
+  static const pastDayReadOnly = 'Past days are read-only.';
 
-  // Gewohnheiten
-  static const myHabits = 'Meine Gewohnheiten';
-  static const habitsSubline = 'Forme heute die Person, die du morgen sein willst.';
-  static const filterAll = 'Alle';
-  static const filterDaily = 'Täglich';
-  static const filterWeekly = 'Wöchentlich';
-  static const filterOnce = 'Einmalig';
-  static const filterInactive = 'Inaktiv';
-  static const daily = 'Täglich';
-  static const weekly = 'Wöchentlich';
-  static const once = 'Einmalig';
+  // Habits management
+  static const myHabits = 'habits';
+  static const habitsSubline = 'a bad day with habits is still better than a good day without them.';
+  static const filterAll = 'all';
+  static const filterDaily = 'daily';
+  static const filterWeekly = 'weekly';
+  static const filterOnce = 'one-time';
+  static const filterInactive = 'inactive';
+  static const daily = 'Daily';
+  static const weekly = 'Weekly';
+  static const once = 'One-time';
 
-  // Belohnungen
-  static const rewardsSubline = 'Verdiene dir, was sich gut anfühlt.';
-  static const ownReward = 'Eigene Belohnung';
-  static const createOwnReward = 'Eigene Belohnung erstellen';
-  static const filterUnlocked = 'Freigeschaltet';
-  static const filterLocked = 'Gesperrt';
-  static const unlockedLabel = 'Freigeschaltet';
-  static const levelRequired = ' erforderlich';
-  static const rewardsAreProgress =
-      'Belohnungen sind kein Luxus – sie sind Teil der Reise.';
+  // Rewards page
+  static const rewardsSubline = 'earn yourself something that feels good.';
+  static const ownReward = 'Custom reward';
+  static const createOwnReward = 'create a reward';
+  static const filterUnlocked = 'unlocked';
+  static const filterLocked = 'locked';
+  static const unlockedLabel = 'unlocked';
+  static const levelRequired = ' required';
+  static const rewardsAreProgress = "rewards aren't a luxury — they're part of the journey.";
 
-  // Statistik
-  static const statisticsSubline =
-      'Fortschritt ist die Summe kleiner Anstrengungen.';
-  static const xpHistory = 'XP-Verlauf';
-  static const tasksCompleted = 'Aufgaben erledigt';
-  static const weeklyOverview = 'Wöchentliche Übersicht';
-  static const currentStreakLabel = 'Aktuelle Streak';
-  static const longestStreakLabel = 'Tage längste Streak';
-  static const vsPrevious = ' vs. Vorwoche';
+  // Stats
+  static const statisticsSubline = 'progress is the sum of small efforts.';
+  static const xpHistory = 'xp history';
+  static const tasksCompleted = 'completion rate';
+  static const weeklyOverview = 'weekly overview';
+  static const currentStreakLabel = 'current streak';
+  static const longestStreakLabel = 'best streak';
+  static const vsPrevious = ' vs. last period';
   static const betterNightByNight =
-      'Du wirst nicht über Nacht besser. Aber du wirst besser – Nacht für Nacht.';
+      "you won't get better overnight. but you'll get better, night after night.";
 
-  // Settings
-  static const settingsSubline = 'Gestalte die App so, wie sie zu dir passt.';
-  static const tabGeneral = 'Allgemein';
-  static const tabGamification = 'Gamification';
-  static const tabAppearance = 'Darstellung';
-  static const tabData = 'Daten';
-  static const tabAbout = 'Über';
-  static const xpAndLeveling = 'XP & Leveling';
-  static const xpMultiplier = 'XP-Multiplikator';
-  static const xpMultiplierHint = 'Alle XP-Werte mit einem Faktor multiplizieren.';
-  static const levelCurveLabel = 'Level-Kurve';
-  static const levelCurveHint =
-      'Bestimmt, wie viel XP für das nächste Level benötigt wird.';
-  static const perfectDayBonusLabel = 'Perfekter Tag Bonus';
-  static const perfectDayBonusHint =
-      'Zusätzliche XP, wenn alle Aufgaben erledigt sind.';
-  static const streakProtectionLabel = 'Streak-Schutz';
-  static const streakProtectionHint =
-      'Ein verpasster Tag unterbricht den Streak nicht sofort.';
-  static const notifications = 'Benachrichtigungen';
-  static const dailyReminderLabel = 'Tägliche Erinnerung';
-  static const dailyReminderHint = 'Erinnere mich an meine Aufgaben.';
-  static const motivationMessagesLabel = 'Motivationsnachrichten';
-  static const motivationMessagesHint = 'Zeige zufällige motivierende Sprüche.';
+  // System / settings
+  static const settingsSubline = 'configure the app to fit how you work.';
+  static const tabGeneral = 'general';
+  static const tabGamification = 'gamification';
+  static const tabAppearance = 'appearance';
+  static const tabData = 'data';
+  static const tabAbout = 'about';
+  static const xpAndLeveling = 'xp & leveling';
+  static const xpMultiplier = 'xp multiplier';
+  static const xpMultiplierHint = 'multiply every xp value by a factor.';
+  static const levelCurveLabel = 'level curve';
+  static const levelCurveHint = 'how much xp the next level needs.';
+  static const perfectDayBonusLabel = 'perfect day bonus';
+  static const perfectDayBonusHint = 'bonus xp when every habit is done for the day.';
+  static const streakProtectionLabel = 'streak protection';
+  static const streakProtectionHint = 'a single missed day will not break your streak.';
+  static const dailyGoalLabel = 'daily goal';
+  static const dailyGoalHint = 'completion rate that counts as "hit your goal" for the day.';
+  static const notifications = 'notifications';
+  static const dailyReminderLabel = 'daily reminder';
+  static const dailyReminderHint = 'remind me to check my habits.';
+  static const motivationMessagesLabel = 'motivational quotes';
+  static const motivationMessagesHint = 'show the // comment-style quotes around the app.';
   static const notificationsUnavailable =
-      'Hinweis: Web-Benachrichtigungen werden noch nicht ausgeliefert – die Einstellung wird gespeichert.';
-  static const showAtmosphereLabel = 'Hintergrund-Atmosphäre';
-  static const showAtmosphereHint =
-      'Die gemalte Berglandschaft hinter den Karten anzeigen.';
+      "note: browser notifications aren't wired up yet — the setting is saved for when they are.";
+  static const showAtmosphereLabel = 'ambient background';
+  static const showAtmosphereHint = 'subtle background texture on cards.';
   static const aboutText =
-      'Quest ist ein lokaler, gamifizierter Habit-Tracker. Deine Daten bleiben auf deinem Gerät. Kein Konto, keine Cloud, offline nutzbar.';
-  static const perfectDayBonusToast = 'Perfekter Tag!';
+      'Quest is a local-first, gamified habit tracker. Your data stays on this device — no account, no cloud, works offline.';
+  static const perfectDayBonusToast = 'Perfect day!';
 
-  static const dayTargets = 'Tagesziele (XP)';
-  static const darkMode = 'Dunkles Design';
-  static const categoriesTitle = 'Kategorien';
-  static const backup = 'Backup';
-  static const exportBackup = 'Backup exportieren';
-  static const importBackup = 'Backup importieren';
-  static const clearData = 'Alle Daten löschen';
+  static const dayTargets = 'daily xp targets';
+  static const darkMode = 'dark mode';
+  static const categoriesTitle = 'categories';
+  static const backup = 'backup';
+  static const exportBackup = 'export backup';
+  static const importBackup = 'import backup';
+  static const clearData = 'clear all data';
   static const clearDataWarning =
-      'Das löscht alle Aufgaben, Gewohnheiten und den Fortschritt. Vorher ein Backup exportieren.';
+      'This deletes every habit, task and all progress. Export a backup first.';
 
   // Proposals (AI seam)
-  static const assistantProposal = 'Vorschlag des Assistenten';
+  static const assistantProposal = 'assistant proposal';
   static const proposalIntro =
-      'Der Assistent schlägt folgende Änderungen vor. Nichts wird gespeichert, bevor du zustimmst.';
+      'The assistant is proposing these changes. Nothing is saved until you approve.';
 
-  static const weekdayShort = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+  // Keyboard hints
+  static const kbdHelp = '? help';
+  static const kbdDayNav = '←→ day';
+  static const kbdMenu = '1-5 menu';
+  static const kbdAddHabit = 'a add habit';
+  static const kbdToggle = 'space toggle';
+
+  static const weekdayShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   static const weekdayLong = [
-    'Montag',
-    'Dienstag',
-    'Mittwoch',
-    'Donnerstag',
-    'Freitag',
-    'Samstag',
-    'Sonntag',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+  static const monthLong = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
 }

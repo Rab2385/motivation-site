@@ -6,8 +6,8 @@ import '../state/motivation_controller.dart';
 import '../theme/app_theme.dart';
 import 'app_toast.dart';
 
-/// Reward tile shared by the dashboard and the Belohnungen page. Shows an
-/// "Einlösen" button when unlocked, a lock + level-progress bar otherwise.
+/// Reward tile shared by the dashboard and the profile page. Shows a
+/// "Redeem" button when unlocked, a lock + level-progress bar otherwise.
 class RewardCard extends StatelessWidget {
   const RewardCard({
     super.key,

@@ -32,7 +32,7 @@ class PlanOperation {
   /// Free-form fields for the operation (title, xp, categoryId, recurrence …).
   final Map<String, Object?> payload;
 
-  /// One-line German description shown in the review sheet.
+  /// One-line description shown in the review sheet.
   final String humanSummary;
 
   Map<String, Object?> toMap() => {
@@ -64,7 +64,7 @@ enum ProposalStatus { pending, approved, rejected }
 ///
 /// **Only non-user actors create proposals.** The user's own edits apply
 /// immediately. A future [AssistantGateway] can build proposals but has no
-/// way to persist them without the user pressing "Übernehmen".
+/// way to persist them without the user pressing "Apply".
 @immutable
 class Proposal {
   const Proposal({

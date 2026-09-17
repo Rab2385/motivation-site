@@ -3,6 +3,9 @@ import 'package:flutter/foundation.dart';
 import '../data/motivation_database.dart';
 import '../domain/achievements.dart';
 import '../domain/difficulty.dart';
+import '../domain/habit_section.dart';
+import '../domain/habit_target.dart';
+import '../domain/overview_stats.dart';
 import '../domain/progression.dart';
 import '../domain/statistics.dart';
 import '../domain/streaks.dart';
@@ -40,7 +43,7 @@ class MotivationController extends ChangeNotifier {
   String _lastRolloverKey = '';
   final Set<String> _dismissedOverloadHints = {};
 
-  // Gamification / app settings (Einstellungen).
+  // Gamification / app settings (System page).
   double _xpMultiplier = 1.0;
   LevelCurve _levelCurve = LevelCurve.standard;
   int _perfectDayBonus = 50;
@@ -49,6 +52,8 @@ class MotivationController extends ChangeNotifier {
   String _reminderTime = '09:00';
   bool _motivationMessages = true;
   bool _showAtmosphere = true;
+  int _dailyGoalPercent = 60;
+  DataWindow _statsWindow = DataWindow.d30;
 
   /// dateKey of the last day we already handed out a perfect-day toast for.
   String _lastPerfectToastKey = '';
@@ -107,6 +112,8 @@ class MotivationController extends ChangeNotifier {
     _reminderTime = settings['reminderTime'] as String? ?? '09:00';
     _motivationMessages = settings['motivationMessages'] as bool? ?? true;
     _showAtmosphere = settings['showAtmosphere'] as bool? ?? true;
+    _dailyGoalPercent =
+        (settings['dailyGoalPercent'] as num?)?.toInt().clamp(1, 100) ?? 60;
     _lastPerfectToastKey = settings['lastPerfectToastKey'] as String? ?? '';
     _lastRolloverKey = snapshot.settings['lastRolloverKey'] as String? ?? '';
 
@@ -126,32 +133,15 @@ class MotivationController extends ChangeNotifier {
       await _database.saveSetting('rewardsSeeded', true);
     }
 
-    // Seed predefined household quest templates on first run
-    final householdQuestsSeeded =
-        snapshot.settings['householdQuestsSeeded'] as bool? ?? false;
-    if (_definitions.isEmpty && !householdQuestsSeeded) {
-      // Seed household quests
-      for (final definition in TaskDefinition.defaultHouseholdQuests(
-        DateTime.now(),
-      )) {
+    // Seed a small starter set of habits on first run.
+    final starterHabitsSeeded =
+        snapshot.settings['starterHabitsSeeded'] as bool? ?? false;
+    if (_definitions.isEmpty && !starterHabitsSeeded) {
+      for (final definition in TaskDefinition.starterHabits(DateTime.now())) {
         _definitions.add(definition);
         await _database.saveDefinition(definition);
       }
-      // Seed fitness quests
-      for (final definition in TaskDefinition.defaultFitnessQuests(
-        DateTime.now(),
-      )) {
-        _definitions.add(definition);
-        await _database.saveDefinition(definition);
-      }
-      // Seed learning quests
-      for (final definition in TaskDefinition.defaultLearningQuests(
-        DateTime.now(),
-      )) {
-        _definitions.add(definition);
-        await _database.saveDefinition(definition);
-      }
-      await _database.saveSetting('householdQuestsSeeded', true);
+      await _database.saveSetting('starterHabitsSeeded', true);
     }
 
     _plan = PlanService(
@@ -192,7 +182,7 @@ class MotivationController extends ChangeNotifier {
   DateTime get today => dateOnly(DateTime.now());
   bool get darkMode => _darkMode;
   List<int> get dayTargetXp => List.unmodifiable(_dayTargetXp);
-  String get languageCode => 'de';
+  String get languageCode => 'en';
 
   List<TaskCategory> get categories => List.unmodifiable(
     [..._categories]..sort((a, b) => a.sortOrder.compareTo(b.sortOrder)),
@@ -206,7 +196,7 @@ class MotivationController extends ChangeNotifier {
       (category) => category.id == id,
       orElse: () => TaskCategory(
         id: id,
-        name: 'Ohne Kategorie',
+        name: 'Uncategorized',
         colorValue: 0xFF9E9E9E,
         iconKey: 'star',
         sortOrder: 999,
@@ -325,6 +315,38 @@ class MotivationController extends ChangeNotifier {
   }
 
   List<TaskOccurrence> get todaysQuests => occurrencesForDay(today);
+
+  /// Today's (or [date]'s) occurrences grouped into sections, in display
+  /// order — the "$ habits" list on the home screen.
+  List<MapEntry<String, List<TaskOccurrence>>> groupedHabitsForDay(
+    DateTime date,
+  ) {
+    return groupBySection(occurrencesForDay(date), (o) => o.section);
+  }
+
+  int get dailyGoalPercent => _dailyGoalPercent;
+  double get dailyGoalFraction => _dailyGoalPercent / 100;
+
+  DataWindow get statsWindow => _statsWindow;
+
+  void setStatsWindow(DataWindow window) {
+    if (_statsWindow == window) return;
+    _statsWindow = window;
+    notifyListeners();
+  }
+
+  OverviewStats overviewStats({DataWindow? window, DateTime? customStart}) =>
+      computeOverviewStats(
+        occurrences: _occurrences,
+        definitions: _definitions,
+        today: today,
+        window: window ?? _statsWindow,
+        goalFraction: dailyGoalFraction,
+        customStart: customStart,
+      );
+
+  List<List<HeatCell>> contributionHeatmap({int weeks = 20}) =>
+      buildContributionHeatmap(occurrences: _occurrences, today: today, weeks: weeks);
 
   int completedCountForDate(DateTime date) =>
       occurrencesForDay(date).where((o) => o.isCompleted).length;
@@ -479,7 +501,9 @@ class MotivationController extends ChangeNotifier {
     required String categoryId,
     required int xp,
     String note = '',
+    String section = '',
     Difficulty? difficulty,
+    HabitTarget? target,
   }) async {
     await _plan.addOneOff(
       date: date,
@@ -487,7 +511,9 @@ class MotivationController extends ChangeNotifier {
       categoryId: categoryId,
       xp: xp,
       note: note,
+      section: section,
       difficulty: difficulty,
+      target: target,
     );
     await _afterWrite();
   }
@@ -498,7 +524,9 @@ class MotivationController extends ChangeNotifier {
     required int xp,
     required RecurrenceRule recurrence,
     String note = '',
+    String section = '',
     Difficulty? difficulty,
+    HabitTarget? target,
   }) async {
     await _plan.createRecurring(
       title: title,
@@ -506,7 +534,9 @@ class MotivationController extends ChangeNotifier {
       xp: xp,
       recurrence: recurrence,
       note: note,
+      section: section,
       difficulty: difficulty,
+      target: target,
     );
     await _afterWrite();
   }
@@ -515,10 +545,13 @@ class MotivationController extends ChangeNotifier {
     String id, {
     String? title,
     String? note,
+    String? section,
     String? categoryId,
     Difficulty? difficulty,
     bool clearDifficulty = false,
     int? xp,
+    HabitTarget? target,
+    bool clearTarget = false,
     RecurrenceRule? recurrence,
     bool? isPaused,
     bool? isArchived,
@@ -527,10 +560,13 @@ class MotivationController extends ChangeNotifier {
       id,
       title: title,
       note: note,
+      section: section,
       categoryId: categoryId,
       difficulty: difficulty,
       clearDifficulty: clearDifficulty,
       xp: xp,
+      target: target,
+      clearTarget: clearTarget,
       recurrence: recurrence,
       isPaused: isPaused,
       isArchived: isArchived,
@@ -568,19 +604,25 @@ class MotivationController extends ChangeNotifier {
     String id, {
     String? title,
     String? note,
+    String? section,
     String? categoryId,
     Difficulty? difficulty,
     bool clearDifficulty = false,
     int? xp,
+    HabitTarget? target,
+    bool clearTarget = false,
   }) async {
     await _plan.editOccurrence(
       id,
       title: title,
       note: note,
+      section: section,
       categoryId: categoryId,
       difficulty: difficulty,
       clearDifficulty: clearDifficulty,
       xp: xp,
+      target: target,
+      clearTarget: clearTarget,
     );
     await _afterWrite();
   }
@@ -635,6 +677,22 @@ class MotivationController extends ChangeNotifier {
 
   Future<void> undoComplete(String id) async {
     await _plan.undoComplete(id);
+    await _afterWrite();
+  }
+
+  /// Logs progress against a quantity-target habit (e.g. "6h59min of 7h
+  /// sleep"). Reaching the target auto-completes it for full XP.
+  Future<void> logProgress(String id, double amount) async {
+    final wasPerfect = isPerfectDay(todaysQuests);
+    await _plan.logProgress(id, amount, xpMultiplier: _xpMultiplier);
+    if (_perfectDayBonus > 0 &&
+        !wasPerfect &&
+        isPerfectDay(todaysQuests) &&
+        _lastPerfectToastKey != dayKey(today)) {
+      _lastPerfectToastKey = dayKey(today);
+      _pendingPerfectToast = true;
+      await _database.saveSetting('lastPerfectToastKey', _lastPerfectToastKey);
+    }
     await _afterWrite();
   }
 
@@ -828,6 +886,11 @@ class MotivationController extends ChangeNotifier {
   Future<void> setShowAtmosphere(bool value) async {
     _showAtmosphere = value;
     await _setAndSave('showAtmosphere', value);
+  }
+
+  Future<void> setDailyGoalPercent(int value) async {
+    _dailyGoalPercent = value.clamp(1, 100);
+    await _setAndSave('dailyGoalPercent', _dailyGoalPercent);
   }
 
   // ---- Backup --------------------------------------------------------

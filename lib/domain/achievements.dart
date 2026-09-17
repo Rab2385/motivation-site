@@ -24,105 +24,80 @@ class AchievementDefinition {
 
 /// The full catalogue, evaluated after every completion and at day rollover.
 const List<_Def> _catalogue = [
+  _Def('first_habit', 'First step', 'Complete your first habit.', Icons.flag_outlined),
+  _Def('ten_habits', 'Building momentum', 'Complete 10 habits.', Icons.directions_run),
   _Def(
-    'first_quest',
-    'Erster Schritt',
-    'Schließe deine erste Quest ab.',
-    Icons.flag_outlined,
-  ),
-  _Def(
-    'ten_quests',
-    'In Fahrt',
-    'Schließe 10 Quests ab.',
-    Icons.directions_run,
-  ),
-  _Def(
-    'hundred_quests',
-    'Durchhalter',
-    'Schließe 100 Quests ab.',
+    'hundred_habits',
+    'Consistent',
+    'Complete 100 habits.',
     Icons.military_tech_outlined,
   ),
   _Def(
     'perfect_day',
-    'Perfekter Tag',
-    'Erledige an einem Tag alles, was geplant war.',
+    'Perfect day',
+    'Finish everything scheduled in one day.',
     Icons.wb_sunny_outlined,
   ),
   _Def(
     'streak_7',
-    'Woche gehalten',
-    'Erreiche eine Streak von 7.',
+    'One week strong',
+    'Reach a 7-day streak.',
     Icons.local_fire_department_outlined,
   ),
   _Def(
     'streak_30',
-    'Eiserne Disziplin',
-    'Erreiche eine Streak von 30.',
+    'Iron discipline',
+    'Reach a 30-day streak.',
     Icons.local_fire_department,
   ),
-  _Def('level_5', 'Level 5', 'Erreiche Level 5.', Icons.trending_up),
-  _Def(
-    'level_10',
-    'Level 10',
-    'Erreiche Level 10.',
-    Icons.rocket_launch_outlined,
-  ),
-  _Def('xp_1000', '1.000 XP', 'Sammle insgesamt 1.000 XP.', Icons.bolt),
-  _Def(
-    'xp_10000',
-    '10.000 XP',
-    'Sammle insgesamt 10.000 XP.',
-    Icons.electric_bolt,
-  ),
+  _Def('level_5', 'Level 5', 'Reach level 5.', Icons.trending_up),
+  _Def('level_10', 'Level 10', 'Reach level 10.', Icons.rocket_launch_outlined),
+  _Def('xp_1000', '1,000 XP', 'Earn 1,000 XP in total.', Icons.bolt),
+  _Def('xp_10000', '10,000 XP', 'Earn 10,000 XP in total.', Icons.electric_bolt),
   _Def(
     'five_categories',
-    'Vielseitig',
-    'Schließe Quests aus 5 verschiedenen Kategorien ab.',
+    'Well-rounded',
+    'Complete habits in 5 different categories.',
     Icons.category_outlined,
   ),
   _Def(
     'week_planned',
-    'Vorausdenker',
-    'Plane eine ganze Woche im Voraus durch.',
+    'Forward thinker',
+    'Plan a full week ahead of time.',
     Icons.event_available_outlined,
   ),
 
   // Category badges
-  _Def(
-    'badge_haushalt',
-    'Hausmeister',
-    'Sammle 100 XP in Haushalt.',
-    Icons.home_outlined,
-  ),
+  _Def('badge_home', 'Housekeeper', 'Earn 100 XP in Home.', Icons.home_outlined),
   _Def(
     'badge_fitness',
-    'Fitness-Enthusiast',
-    'Sammle 100 XP in Fitness.',
+    'Fitness enthusiast',
+    'Earn 100 XP in Fitness.',
     Icons.fitness_center,
   ),
   _Def(
-    'badge_lernen',
-    'Wissenshunger',
-    'Sammle 100 XP in Lernen.',
+    'badge_learning',
+    'Hungry mind',
+    'Earn 100 XP in Learning.',
     Icons.menu_book,
   ),
-  _Def('badge_coding', 'Code-Meister', 'Sammle 100 XP in Coding.', Icons.code),
+  _Def('badge_coding', 'Code master', 'Earn 100 XP in Coding.', Icons.code),
   _Def(
-    'badge_achtsamkeit',
-    'Achtsamkeits-Guru',
-    'Sammle 50 XP in Achtsamkeit.',
+    'badge_mindfulness',
+    'Mindfulness guru',
+    'Earn 50 XP in Mindfulness.',
     Icons.self_improvement,
   ),
   _Def(
-    'badge_gesundheit',
-    'Gesundheits-Profi',
-    'Sammle 75 XP in Gesundheit.',
+    'badge_health',
+    'Health pro',
+    'Earn 75 XP in Health.',
     Icons.favorite,
   ),
   _Def(
     'badge_shopping',
-    'Organisiert',
-    'Sammle 50 XP in Einkaufen.',
+    'Organized',
+    'Earn 50 XP in Shopping.',
     Icons.shopping_bag_outlined,
   ),
 ];
@@ -137,11 +112,11 @@ class _Def {
 
 bool _test(String id, StatsSnapshot s) {
   switch (id) {
-    case 'first_quest':
+    case 'first_habit':
       return s.totalCompletions >= 1;
-    case 'ten_quests':
+    case 'ten_habits':
       return s.totalCompletions >= 10;
-    case 'hundred_quests':
+    case 'hundred_habits':
       return s.totalCompletions >= 100;
     case 'perfect_day':
       return s.hadPerfectDayToday;
@@ -163,18 +138,18 @@ bool _test(String id, StatsSnapshot s) {
       return s.fullyPlannedWeeks >= 1;
 
     // Category badges
-    case 'badge_haushalt':
-      return (s.xpByCategory['haushalt'] ?? 0) >= 100;
+    case 'badge_home':
+      return (s.xpByCategory['home'] ?? 0) >= 100;
     case 'badge_fitness':
       return (s.xpByCategory['fitness'] ?? 0) >= 100;
-    case 'badge_lernen':
-      return (s.xpByCategory['lernen'] ?? 0) >= 100;
+    case 'badge_learning':
+      return (s.xpByCategory['learning'] ?? 0) >= 100;
     case 'badge_coding':
       return (s.xpByCategory['coding'] ?? 0) >= 100;
-    case 'badge_achtsamkeit':
-      return (s.xpByCategory['achtsamkeit'] ?? 0) >= 50;
-    case 'badge_gesundheit':
-      return (s.xpByCategory['gesundheit'] ?? 0) >= 75;
+    case 'badge_mindfulness':
+      return (s.xpByCategory['mindfulness'] ?? 0) >= 50;
+    case 'badge_health':
+      return (s.xpByCategory['health'] ?? 0) >= 75;
     case 'badge_shopping':
       return (s.xpByCategory['shopping'] ?? 0) >= 50;
     default:
