@@ -1,12 +1,14 @@
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:sembast/sembast.dart';
 
+import '../models/milestone.dart';
 import '../models/proposal.dart';
 import '../models/reward.dart';
 import '../models/task_category.dart';
 import '../models/task_definition.dart';
 import '../models/task_occurrence.dart';
 import '../models/week_template.dart';
+import '../models/weight_entry.dart';
 import 'database_open.dart';
 
 /// Everything loaded from disk in one shot at startup.
@@ -18,6 +20,8 @@ class DatabaseSnapshot {
     required this.templates,
     required this.proposals,
     required this.rewards,
+    required this.milestones,
+    required this.weightEntries,
     required this.achievementUnlocks,
     required this.settings,
     required this.meta,
@@ -29,6 +33,8 @@ class DatabaseSnapshot {
   final List<WeekTemplate> templates;
   final List<Proposal> proposals;
   final List<Reward> rewards;
+  final List<Milestone> milestones;
+  final List<WeightEntry> weightEntries;
 
   /// achievementId -> unlockedAt.
   final Map<String, DateTime> achievementUnlocks;
@@ -56,6 +62,8 @@ class MotivationDatabase {
   final _templates = stringMapStoreFactory.store('week_templates');
   final _proposals = stringMapStoreFactory.store('proposals');
   final _rewards = stringMapStoreFactory.store('rewards');
+  final _milestones = stringMapStoreFactory.store('milestones');
+  final _weightEntries = stringMapStoreFactory.store('weight_entries');
   final _achievements = stringMapStoreFactory.store('achievement_unlocks');
   final _settings = StoreRef<String, Object?>('settings');
   final _meta = StoreRef<String, Object?>('meta');
@@ -98,6 +106,16 @@ class MotivationDatabase {
         .toList()
       ..sort((a, b) => a.requiredLevel.compareTo(b.requiredLevel));
 
+    final milestones = (await _milestones.find(db))
+        .map((r) => Milestone.fromMap(r.value))
+        .toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+    final weightEntries = (await _weightEntries.find(db))
+        .map((r) => WeightEntry.fromMap(r.value))
+        .toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+
     final achievementUnlocks = <String, DateTime>{};
     for (final record in await _achievements.find(db)) {
       final at = record.value['unlockedAt'] as String?;
@@ -118,6 +136,8 @@ class MotivationDatabase {
       templates: templates,
       proposals: proposals,
       rewards: rewards,
+      milestones: milestones,
+      weightEntries: weightEntries,
       achievementUnlocks: achievementUnlocks,
       settings: settings,
       meta: meta,
@@ -187,6 +207,22 @@ class MotivationDatabase {
   Future<void> deleteProposal(String id) async =>
       _proposals.record(id).delete(await _db);
 
+  // ---- Milestones ------------------------------------------------------
+
+  Future<void> saveMilestone(Milestone milestone) async =>
+      _milestones.record(milestone.id).put(await _db, milestone.toMap());
+
+  Future<void> deleteMilestone(String id) async =>
+      _milestones.record(id).delete(await _db);
+
+  // ---- Weight entries ------------------------------------------------------
+
+  Future<void> saveWeightEntry(WeightEntry entry) async =>
+      _weightEntries.record(entry.id).put(await _db, entry.toMap());
+
+  Future<void> deleteWeightEntry(String id) async =>
+      _weightEntries.record(id).delete(await _db);
+
   // ---- Achievements ------------------------------------------------------
 
   Future<void> saveAchievementUnlock(String id, DateTime unlockedAt) async =>
@@ -218,6 +254,8 @@ class MotivationDatabase {
       'week_templates': await dump(_templates),
       'proposals': await dump(_proposals),
       'rewards': await dump(_rewards),
+      'milestones': await dump(_milestones),
+      'weight_entries': await dump(_weightEntries),
       'achievement_unlocks': {
         for (final r in await _achievements.find(db)) r.key: r.value,
       },
@@ -239,6 +277,8 @@ class MotivationDatabase {
       await _templates.delete(txn);
       await _proposals.delete(txn);
       await _rewards.delete(txn);
+      await _milestones.delete(txn);
+      await _weightEntries.delete(txn);
       await _achievements.delete(txn);
       await _settings.delete(txn);
       await _meta.delete(txn);
@@ -260,6 +300,8 @@ class MotivationDatabase {
       await restoreList(_templates, data['week_templates'], 'id');
       await restoreList(_proposals, data['proposals'], 'id');
       await restoreList(_rewards, data['rewards'], 'id');
+      await restoreList(_milestones, data['milestones'], 'id');
+      await restoreList(_weightEntries, data['weight_entries'], 'id');
 
       for (final entry
           in (data['achievement_unlocks'] as Map? ?? const {}).entries) {
@@ -285,6 +327,8 @@ class MotivationDatabase {
       await _templates.delete(txn);
       await _proposals.delete(txn);
       await _rewards.delete(txn);
+      await _milestones.delete(txn);
+      await _weightEntries.delete(txn);
       await _achievements.delete(txn);
       await _settings.delete(txn);
       await _meta.delete(txn);
