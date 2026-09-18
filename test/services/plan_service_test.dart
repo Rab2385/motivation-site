@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motivation/data/motivation_database.dart';
 import 'package:motivation/domain/habit_target.dart';
+import 'package:motivation/domain/life_grid.dart';
+import 'package:motivation/models/milestone.dart';
 import 'package:motivation/models/proposal.dart';
 import 'package:motivation/models/recurrence_rule.dart';
 import 'package:motivation/models/reward.dart';
@@ -8,6 +10,7 @@ import 'package:motivation/models/task_category.dart';
 import 'package:motivation/models/task_definition.dart';
 import 'package:motivation/models/task_occurrence.dart';
 import 'package:motivation/models/week_template.dart';
+import 'package:motivation/models/weight_entry.dart';
 import 'package:motivation/services/plan_service.dart';
 import 'package:motivation/util/dates.dart';
 import 'package:sembast/sembast_memory.dart';
@@ -20,6 +23,8 @@ void main() {
   late List<WeekTemplate> templates;
   late List<Proposal> proposals;
   late List<Reward> rewards;
+  late List<Milestone> milestones;
+  late List<WeightEntry> weightEntries;
   late PlanService plan;
 
   final monday = weekStart(DateTime.now()).add(const Duration(days: 7));
@@ -33,6 +38,8 @@ void main() {
     templates = [];
     proposals = [];
     rewards = [];
+    milestones = [];
+    weightEntries = [];
     plan = PlanService(
       database: db,
       categories: categories,
@@ -41,6 +48,8 @@ void main() {
       templates: templates,
       proposals: proposals,
       rewards: rewards,
+      milestones: milestones,
+      weightEntries: weightEntries,
     );
   });
 
@@ -352,5 +361,69 @@ void main() {
 
     expect(occurrences.any((o) => o.title == 'Journaling'), isTrue);
     expect(proposals.single.status, ProposalStatus.approved);
+  });
+
+  group('milestones', () {
+    test('achieving a milestone awards its XP exactly once via the normal completion pipeline', () async {
+      final milestone = await plan.addMilestone(
+        title: 'Publish an iOS App',
+        categoryId: 'coding',
+        xp: 150,
+      );
+      expect(milestone.status, GoalStatus.notStarted);
+      expect(occurrences, isEmpty);
+
+      await plan.setMilestoneStatus(milestone.id, GoalStatus.achieved);
+
+      expect(occurrences, hasLength(1));
+      expect(occurrences.single.isFullyCompleted, isTrue);
+      expect(occurrences.single.completion!.awardedXp, 150);
+      expect(milestones.single.status, GoalStatus.achieved);
+      expect(milestones.single.awardedOccurrenceId, occurrences.single.id);
+    });
+
+    test('un-achieving a milestone removes the awarded occurrence, so re-achieving does not double-award', () async {
+      final milestone = await plan.addMilestone(
+        title: 'Reach ~100 kg',
+        categoryId: 'health',
+        xp: 100,
+      );
+      await plan.setMilestoneStatus(milestone.id, GoalStatus.achieved);
+      expect(occurrences, hasLength(1));
+
+      await plan.setMilestoneStatus(milestone.id, GoalStatus.inProgress);
+      expect(occurrences, isEmpty);
+      expect(milestones.single.awardedOccurrenceId, isNull);
+
+      await plan.setMilestoneStatus(milestone.id, GoalStatus.achieved);
+      expect(occurrences, hasLength(1));
+      expect(occurrences.single.completion!.awardedXp, 100);
+    });
+
+    test('deleting an achieved milestone also removes its awarded occurrence', () async {
+      final milestone = await plan.addMilestone(
+        title: 'Learn Flutter / iOS',
+        categoryId: 'coding',
+        xp: 100,
+      );
+      await plan.setMilestoneStatus(milestone.id, GoalStatus.achieved);
+      expect(occurrences, hasLength(1));
+
+      await plan.deleteMilestone(milestone.id);
+      expect(milestones, isEmpty);
+      expect(occurrences, isEmpty);
+    });
+  });
+
+  group('weight entries', () {
+    test('logWeight persists and deleteWeightEntry removes it', () async {
+      final entry = await plan.logWeight(day(0), 117.4);
+      expect(weightEntries, hasLength(1));
+      final reloaded = await db.loadAll();
+      expect(reloaded.weightEntries.single.kg, 117.4);
+
+      await plan.deleteWeightEntry(entry.id);
+      expect(weightEntries, isEmpty);
+    });
   });
 }

@@ -11,6 +11,7 @@ import '../widgets/task_editor_sheet.dart';
 import '../widgets/terminal_widgets.dart';
 import 'habits_home_page.dart';
 import 'help_page.dart';
+import 'life_grid_page.dart';
 import 'profile_page.dart';
 import 'stats_page.dart';
 import 'system_page.dart';
@@ -154,6 +155,7 @@ class _MotivationShellState extends State<MotivationShell> {
                     selected: _index,
                     onSelect: _select,
                     onOpenPlanner: () => _openPlanner(context),
+                    onOpenLifeGrid: () => _openLifeGrid(context),
                   ),
                   const Divider(height: 1),
                   Expanded(
@@ -175,6 +177,7 @@ class _MotivationShellState extends State<MotivationShell> {
                   _MobileTopBar(
                     controller: widget.controller,
                     onOpenPlanner: () => _openPlanner(context),
+                    onOpenLifeGrid: () => _openLifeGrid(context),
                   ),
                   Expanded(child: Padding(padding: const EdgeInsets.only(top: 8), child: page)),
                 ],
@@ -221,14 +224,26 @@ class _MotivationShellState extends State<MotivationShell> {
       builder: (context) => WeekPlanPage(controller: widget.controller),
     ));
   }
+
+  void _openLifeGrid(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (context) => LifeGridPage(controller: widget.controller),
+    ));
+  }
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.selected, required this.onSelect, required this.onOpenPlanner});
+  const _TopBar({
+    required this.selected,
+    required this.onSelect,
+    required this.onOpenPlanner,
+    required this.onOpenLifeGrid,
+  });
 
   final int selected;
   final ValueChanged<int> onSelect;
   final VoidCallback onOpenPlanner;
+  final VoidCallback onOpenLifeGrid;
 
   @override
   Widget build(BuildContext context) {
@@ -264,6 +279,11 @@ class _TopBar extends StatelessWidget {
           const SizedBox(width: 28),
           for (var i = 0; i < 5; i++) _NavLabel(index: i, selected: selected == i, onTap: onSelect),
           const Spacer(),
+          IconButton(
+            tooltip: 'life grid',
+            onPressed: onOpenLifeGrid,
+            icon: const Icon(Icons.grid_view_outlined, size: 19, color: AppTheme.textMid),
+          ),
           IconButton(
             tooltip: 'weekly planner',
             onPressed: onOpenPlanner,
@@ -321,10 +341,15 @@ class _NavLabel extends StatelessWidget {
 }
 
 class _MobileTopBar extends StatelessWidget {
-  const _MobileTopBar({required this.controller, required this.onOpenPlanner});
+  const _MobileTopBar({
+    required this.controller,
+    required this.onOpenPlanner,
+    required this.onOpenLifeGrid,
+  });
 
   final MotivationController controller;
   final VoidCallback onOpenPlanner;
+  final VoidCallback onOpenLifeGrid;
 
   @override
   Widget build(BuildContext context) {
@@ -341,6 +366,10 @@ class _MobileTopBar extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     fontSize: 14)),
             const Spacer(),
+            IconButton(
+              onPressed: onOpenLifeGrid,
+              icon: const Icon(Icons.grid_view_outlined, size: 20, color: AppTheme.textMid),
+            ),
             IconButton(
               onPressed: onOpenPlanner,
               icon: const Icon(Icons.calendar_month_outlined, size: 20, color: AppTheme.textMid),

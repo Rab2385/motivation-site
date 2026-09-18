@@ -98,4 +98,41 @@ void main() {
     expect(refreshed.upserts.every((o) => o.xp == 90), isTrue);
     expect(refreshed.upserts, isNotEmpty);
   });
+
+  test('monthly definitions materialise one occurrence on their day, within the longer horizon', () {
+    // now = Mon 2026-09-07. Horizon is monthlyHorizonMonths (2) ahead, so
+    // this should catch the 15th of both September and October.
+    final result = runMaterialisation(
+      definitions: [monthlyDef(dayOfMonth: 15, createdAt: DateTime(2026, 8, 1))],
+      occurrences: const [],
+      now: now,
+    );
+    expect(result.upserts.length, 2);
+    expect(result.upserts.map((o) => o.date.day), everyElement(15));
+    expect(result.upserts.map((o) => o.date.month), containsAll([9, 10]));
+  });
+
+  test('monthly definition clamps to the last day of a shorter month', () {
+    final result = runMaterialisation(
+      definitions: [monthlyDef(dayOfMonth: 31, createdAt: DateTime(2026, 1, 1))],
+      occurrences: const [],
+      now: DateTime(2026, 3, 20), // April has no 31st within the 2-month horizon
+    );
+    expect(result.upserts, isNotEmpty);
+    expect(result.upserts.any((o) => o.date.month == 4 && o.date.day == 30), isTrue);
+  });
+
+  test('monthly materialisation is idempotent with no time change', () {
+    final first = runMaterialisation(
+      definitions: [monthlyDef(createdAt: DateTime(2026, 8, 1))],
+      occurrences: const [],
+      now: now,
+    );
+    final second = runMaterialisation(
+      definitions: [monthlyDef(createdAt: DateTime(2026, 8, 1))],
+      occurrences: first.upserts,
+      now: now,
+    );
+    expect(second.isEmpty, isTrue);
+  });
 }

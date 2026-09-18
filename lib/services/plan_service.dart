@@ -3,8 +3,11 @@ import 'package:collection/collection.dart';
 import '../data/motivation_database.dart';
 import '../domain/difficulty.dart';
 import '../domain/habit_target.dart';
+import '../domain/life_grid.dart';
+import '../domain/priority.dart';
 import '../domain/progression.dart';
 import '../models/completion.dart';
+import '../models/milestone.dart';
 import '../models/proposal.dart';
 import '../models/recurrence_rule.dart';
 import '../models/reward.dart';
@@ -12,6 +15,7 @@ import '../models/task_category.dart';
 import '../models/task_definition.dart';
 import '../models/task_occurrence.dart';
 import '../models/week_template.dart';
+import '../models/weight_entry.dart';
 import '../util/dates.dart';
 import '../util/id.dart';
 import 'materialisation_service.dart';
@@ -47,13 +51,17 @@ class PlanService {
     required List<WeekTemplate> templates,
     required List<Proposal> proposals,
     required List<Reward> rewards,
+    required List<Milestone> milestones,
+    required List<WeightEntry> weightEntries,
   })  : _db = database,
         _categories = categories,
         _definitions = definitions,
         _occurrences = occurrences,
         _templates = templates,
         _proposals = proposals,
-        _rewards = rewards;
+        _rewards = rewards,
+        _milestones = milestones,
+        _weightEntries = weightEntries;
 
   final MotivationDatabase _db;
 
@@ -65,6 +73,8 @@ class PlanService {
   final List<WeekTemplate> _templates;
   final List<Proposal> _proposals;
   final List<Reward> _rewards;
+  final List<Milestone> _milestones;
+  final List<WeightEntry> _weightEntries;
 
   DateTime _now() => DateTime.now();
 
@@ -79,6 +89,8 @@ class PlanService {
     String section = '',
     Difficulty? difficulty,
     HabitTarget? target,
+    Priority priority = Priority.normal,
+    bool isBonus = false,
   }) async {
     final now = _now();
     final occurrence = TaskOccurrence(
@@ -91,6 +103,8 @@ class PlanService {
       difficulty: difficulty,
       xp: xp,
       target: target,
+      priority: priority,
+      isBonus: isBonus,
       origin: OccurrenceOrigin.oneOff,
       createdAt: now,
       updatedAt: now,
@@ -110,6 +124,9 @@ class PlanService {
     String section = '',
     Difficulty? difficulty,
     HabitTarget? target,
+    Priority priority = Priority.normal,
+    bool? isFocus,
+    bool isBonus = false,
   }) async {
     final now = _now();
     final definition = TaskDefinition(
@@ -121,6 +138,9 @@ class PlanService {
       difficulty: difficulty,
       xp: xp,
       target: target,
+      priority: priority,
+      isFocus: isFocus,
+      isBonus: isBonus,
       recurrence: recurrence,
       createdAt: now,
       updatedAt: now,
@@ -142,6 +162,10 @@ class PlanService {
     int? xp,
     HabitTarget? target,
     bool clearTarget = false,
+    Priority? priority,
+    bool? isFocus,
+    bool clearIsFocus = false,
+    bool? isBonus,
     RecurrenceRule? recurrence,
     bool? isPaused,
     bool? isArchived,
@@ -158,6 +182,10 @@ class PlanService {
       xp: xp,
       target: target,
       clearTarget: clearTarget,
+      priority: priority,
+      isFocus: isFocus,
+      clearIsFocus: clearIsFocus,
+      isBonus: isBonus,
       recurrence: recurrence,
       isPaused: isPaused,
       isArchived: isArchived,
@@ -574,6 +602,7 @@ class PlanService {
     int? colorValue,
     String? iconKey,
     bool? isArchived,
+    bool? isFocusArea,
   }) async {
     final index = _categories.indexWhere((c) => c.id == id);
     if (index == -1) return;
@@ -582,6 +611,7 @@ class PlanService {
       colorValue: colorValue,
       iconKey: iconKey,
       isArchived: isArchived,
+      isFocusArea: isFocusArea,
     );
     _categories[index] = updated;
     await _db.saveCategory(updated);
@@ -650,6 +680,117 @@ class PlanService {
     _rewards[index] = updated;
     await _db.saveReward(updated);
     return true;
+  }
+
+  // ---- Milestones (Life Grid) ------------------------------------------------
+
+  Future<Milestone> addMilestone({
+    required String title,
+    required String categoryId,
+    required int xp,
+    String description = '',
+    DateTime? targetDate,
+    GoalStatus status = GoalStatus.notStarted,
+  }) async {
+    final milestone = Milestone(
+      id: newId('mil'),
+      title: title.trim(),
+      description: description.trim(),
+      categoryId: categoryId,
+      xp: xp,
+      status: status,
+      targetDate: targetDate,
+      createdAt: _now(),
+    );
+    _milestones.add(milestone);
+    await _db.saveMilestone(milestone);
+    return milestone;
+  }
+
+  Future<void> updateMilestone(
+    String id, {
+    String? title,
+    String? description,
+    String? categoryId,
+    int? xp,
+    DateTime? targetDate,
+    bool clearTargetDate = false,
+  }) async {
+    final index = _milestones.indexWhere((m) => m.id == id);
+    if (index == -1) return;
+    final updated = _milestones[index].copyWith(
+      title: title?.trim(),
+      description: description?.trim(),
+      categoryId: categoryId,
+      xp: xp,
+      targetDate: targetDate,
+      clearTargetDate: clearTargetDate,
+    );
+    _milestones[index] = updated;
+    await _db.saveMilestone(updated);
+  }
+
+  Future<void> deleteMilestone(String id) async {
+    final milestone = _milestones.where((m) => m.id == id).firstOrNull;
+    _milestones.removeWhere((m) => m.id == id);
+    await _db.deleteMilestone(id);
+    if (milestone?.awardedOccurrenceId != null) {
+      await _removeOccurrences([milestone!.awardedOccurrenceId!]);
+    }
+  }
+
+  /// Sets a milestone's status. Moving to [GoalStatus.achieved] awards its XP
+  /// exactly once, through the normal completion pipeline (a synthetic
+  /// completed one-off occurrence) so it flows through stats/level like
+  /// anything else. Moving away from achieved removes that occurrence again,
+  /// so re-achieving later doesn't double-award XP.
+  Future<void> setMilestoneStatus(String id, GoalStatus status) async {
+    final index = _milestones.indexWhere((m) => m.id == id);
+    if (index == -1) return;
+    final milestone = _milestones[index];
+
+    if (status == GoalStatus.achieved && milestone.status != GoalStatus.achieved) {
+      final occurrence = await addOneOff(
+        date: _now(),
+        title: milestone.title,
+        categoryId: milestone.categoryId,
+        xp: milestone.xp,
+        note: 'Milestone achieved',
+      );
+      await complete(occurrence.id);
+      _milestones[index] = milestone.copyWith(
+        status: status,
+        achievedAt: _now(),
+        awardedOccurrenceId: occurrence.id,
+      );
+    } else if (status != GoalStatus.achieved &&
+        milestone.status == GoalStatus.achieved) {
+      if (milestone.awardedOccurrenceId != null) {
+        await _removeOccurrences([milestone.awardedOccurrenceId!]);
+      }
+      _milestones[index] = milestone.copyWith(
+        status: status,
+        clearAchievedAt: true,
+        clearAwardedOccurrenceId: true,
+      );
+    } else {
+      _milestones[index] = milestone.copyWith(status: status);
+    }
+    await _db.saveMilestone(_milestones[index]);
+  }
+
+  // ---- Weight entries (Life Grid: Health) ------------------------------------
+
+  Future<WeightEntry> logWeight(DateTime date, double kg) async {
+    final entry = WeightEntry(id: newId('wt'), date: dateOnly(date), kg: kg);
+    _weightEntries.add(entry);
+    await _db.saveWeightEntry(entry);
+    return entry;
+  }
+
+  Future<void> deleteWeightEntry(String id) async {
+    _weightEntries.removeWhere((w) => w.id == id);
+    await _db.deleteWeightEntry(id);
   }
 
   // ---- Proposals (AI seam) ------------------------------------------------
@@ -742,8 +883,7 @@ class PlanService {
         .where((d) => d.id == occurrence.sourceDefinitionId)
         .firstOrNull;
     if (definition == null) return false;
-    return definition.recurrence.kind == RecurrenceKind.fixedWeekdays &&
-        definition.recurrence.weekdays.contains(occurrence.date.weekday);
+    return definition.recurrence.occursOn(occurrence.date);
   }
 
   Future<void> _materialise(DateTime now) async {

@@ -23,6 +23,24 @@ TaskDefinition fixedDef({
   );
 }
 
+TaskDefinition monthlyDef({
+  String id = 'defm',
+  int dayOfMonth = 15,
+  int xp = 50,
+  DateTime? createdAt,
+}) {
+  final now = createdAt ?? DateTime(2026, 1, 1);
+  return TaskDefinition(
+    id: id,
+    title: 'Monthly Review',
+    categoryId: 'fitness',
+    xp: xp,
+    recurrence: RecurrenceRule.monthly(dayOfMonth),
+    createdAt: now,
+    updatedAt: now,
+  );
+}
+
 TaskDefinition quotaDef({
   String id = 'defq',
   int times = 3,

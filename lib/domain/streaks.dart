@@ -52,6 +52,10 @@ StreakInfo computeStreak({
       return _fixedWeekdayStreak(definition, mine, dateOnly(today));
     case RecurrenceKind.timesPerWeek:
       return _timesPerWeekStreak(definition, mine, dateOnly(today));
+    case RecurrenceKind.monthly:
+      // A once-a-month cadence doesn't have a consecutive-day streak; it's
+      // tracked as a plain completion instead (see the Life Grid review).
+      return const StreakInfo.empty();
   }
 }
 

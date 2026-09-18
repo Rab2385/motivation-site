@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../domain/life_grid.dart';
 import '../domain/overview_stats.dart';
 import '../l10n/app_text.dart';
 import '../l10n/quotes.dart';
@@ -39,6 +40,13 @@ class HabitsHomePage extends StatelessWidget {
           today: today,
           onShiftDay: nav.shiftDay,
         );
+        final centerFlat = _CenterColumn(
+          controller: controller,
+          date: date,
+          today: today,
+          onShiftDay: nav.shiftDay,
+          scrollable: false,
+        );
 
         if (width >= 1180) {
           return Row(
@@ -75,7 +83,9 @@ class HabitsHomePage extends StatelessWidget {
                   children: [
                     _CompactStatus(controller: controller),
                     const SizedBox(height: 14),
-                    center,
+                    TerminalPanel(child: _NinetyDayFocusPanel(controller: controller)),
+                    const SizedBox(height: 14),
+                    Expanded(child: center),
                   ],
                 ),
               ),
@@ -97,7 +107,9 @@ class HabitsHomePage extends StatelessWidget {
               nav.shiftDay(d.difference(nav.date).inDays);
             }),
             const SizedBox(height: 14),
-            center,
+            TerminalPanel(child: _NinetyDayFocusPanel(controller: controller)),
+            const SizedBox(height: 14),
+            centerFlat,
           ],
         );
       },
@@ -137,6 +149,8 @@ class _LeftColumn extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TerminalPanel(child: _StatusBlock(controller: controller)),
+          const SizedBox(height: 14),
+          TerminalPanel(child: _NinetyDayFocusPanel(controller: controller)),
           const SizedBox(height: 14),
           TerminalPanel(
             child: Column(
@@ -283,6 +297,100 @@ class _CompactStatus extends StatelessWidget {
   }
 }
 
+class _NinetyDayFocusPanel extends StatelessWidget {
+  const _NinetyDayFocusPanel({required this.controller});
+  final MotivationController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final workouts = controller.weeklyCompletionCount(LifeGridIds.weeklyWorkout);
+    final decideActs = controller.weeklyCompletionCount(LifeGridIds.decideAct);
+    final courageDone = controller.weeklyCompletionCount(LifeGridIds.courageChallenge) > 0;
+    final deepBuildDone = controller.weeklyCompletionCount(LifeGridIds.deepBuild) > 0;
+    final latestWeight = controller.latestWeightEntry;
+    final creativityMilestones = controller.milestonesForCategory('coding');
+    final nextMilestone = creativityMilestones
+        .where((m) => m.status != GoalStatus.achieved)
+        .firstOrNull;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const TerminalHeader('90-day focus'),
+        const SizedBox(height: 10),
+        _FocusRow(
+          label: 'health',
+          icon: Icons.favorite_border,
+          lines: [
+            latestWeight == null
+                ? 'no weigh-in yet'
+                : '${latestWeight.kg.toStringAsFixed(1)}kg '
+                    '(target ${ninetyDayFocus.currentTargetLowKg.round()}–'
+                    '${ninetyDayFocus.currentTargetHighKg.round()}kg)',
+            'workouts this week: $workouts/${ninetyDayFocus.minWorkoutsPerWeek}',
+          ],
+        ),
+        const SizedBox(height: 8),
+        _FocusRow(
+          label: 'courage',
+          icon: Icons.bolt_outlined,
+          lines: [
+            'decide & act: $decideActs this week',
+            'courage challenge: ${courageDone ? "done" : "open"}',
+          ],
+        ),
+        const SizedBox(height: 8),
+        _FocusRow(
+          label: 'create',
+          icon: Icons.explore_outlined,
+          lines: [
+            'deep build: ${deepBuildDone ? "done" : "open"}',
+            if (nextMilestone != null)
+              'milestone: ${nextMilestone.status.symbol} ${nextMilestone.title}',
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _FocusRow extends StatelessWidget {
+  const _FocusRow({required this.label, required this.icon, required this.lines});
+  final String label;
+  final IconData icon;
+  final List<String> lines;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 14, color: AppTheme.amber),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: const TextStyle(
+                      fontFamilyFallback: AppTheme.mono,
+                      color: AppTheme.textHigh,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11.5)),
+              for (final line in lines)
+                Text(line,
+                    style: const TextStyle(
+                        fontFamilyFallback: AppTheme.mono,
+                        color: AppTheme.textMid,
+                        fontSize: 11)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _WeekStrip extends StatelessWidget {
   const _WeekStrip({required this.controller, required this.selected, required this.onSelect});
 
@@ -349,6 +457,7 @@ class _CenterColumn extends StatelessWidget {
     required this.date,
     required this.today,
     required this.onShiftDay,
+    this.scrollable = true,
   });
 
   final MotivationController controller;
@@ -356,11 +465,37 @@ class _CenterColumn extends StatelessWidget {
   final DateTime today;
   final void Function(int delta) onShiftDay;
 
+  /// True (default) when this sits in a bounded-height layout and should
+  /// scroll its own habit list internally. False when it's placed inside an
+  /// already-scrollable ancestor (the narrow single-column mobile layout) —
+  /// there it must render at its natural height instead of using `Expanded`,
+  /// which needs a bounded parent and isn't available inside a `ListView`.
+  final bool scrollable;
+
   @override
   Widget build(BuildContext context) {
     final grouped = controller.groupedHabitsForDay(date);
     final isToday = isSameDay(date, today);
     final isPast = date.isBefore(today);
+
+    final habitList = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (grouped.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            child: Center(
+              child: Text(
+                isPast ? 'nothing was scheduled that day.' : AppText.noQuestsToday,
+                style: const TextStyle(color: AppTheme.textMid),
+              ),
+            ),
+          )
+        else
+          for (final entry in grouped)
+            _SectionBlock(controller: controller, section: entry.key, occurrences: entry.value),
+      ],
+    );
 
     return TerminalPanel(
       child: Column(
@@ -390,31 +525,9 @@ class _CenterColumn extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (grouped.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 32),
-                      child: Center(
-                        child: Text(
-                          isPast ? 'nothing was scheduled that day.' : AppText.noQuestsToday,
-                          style: const TextStyle(color: AppTheme.textMid),
-                        ),
-                      ),
-                    )
-                  else
-                    for (final entry in grouped) _SectionBlock(
-                      controller: controller,
-                      section: entry.key,
-                      occurrences: entry.value,
-                    ),
-                ],
-              ),
-            ),
-          ),
+          scrollable
+              ? Expanded(child: SingleChildScrollView(child: habitList))
+              : habitList,
           const SizedBox(height: 6),
           if (!isPast)
             Row(

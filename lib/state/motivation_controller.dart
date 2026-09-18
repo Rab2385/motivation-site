@@ -5,11 +5,14 @@ import '../domain/achievements.dart';
 import '../domain/difficulty.dart';
 import '../domain/habit_section.dart';
 import '../domain/habit_target.dart';
+import '../domain/life_grid.dart';
 import '../domain/overview_stats.dart';
+import '../domain/priority.dart';
 import '../domain/progression.dart';
 import '../domain/statistics.dart';
 import '../domain/streaks.dart';
 import '../domain/workload.dart';
+import '../models/milestone.dart';
 import '../models/proposal.dart';
 import '../models/recurrence_rule.dart';
 import '../models/reward.dart';
@@ -17,6 +20,7 @@ import '../models/task_category.dart';
 import '../models/task_definition.dart';
 import '../models/task_occurrence.dart';
 import '../models/week_template.dart';
+import '../models/weight_entry.dart';
 import '../services/backup_service.dart';
 import '../services/plan_service.dart';
 import '../util/dates.dart';
@@ -36,6 +40,8 @@ class MotivationController extends ChangeNotifier {
   final List<WeekTemplate> _templates = [];
   final List<Proposal> _proposals = [];
   final List<Reward> _rewards = [];
+  final List<Milestone> _milestones = [];
+  final List<WeightEntry> _weightEntries = [];
   final Map<String, DateTime> _achievementUnlocks = {};
 
   bool _darkMode = true;
@@ -92,6 +98,12 @@ class MotivationController extends ChangeNotifier {
     _rewards
       ..clear()
       ..addAll(snapshot.rewards);
+    _milestones
+      ..clear()
+      ..addAll(snapshot.milestones);
+    _weightEntries
+      ..clear()
+      ..addAll(snapshot.weightEntries);
     _achievementUnlocks
       ..clear()
       ..addAll(snapshot.achievementUnlocks);
@@ -152,7 +164,11 @@ class MotivationController extends ChangeNotifier {
       templates: _templates,
       proposals: _proposals,
       rewards: _rewards,
+      milestones: _milestones,
+      weightEntries: _weightEntries,
     );
+
+    await _seedLifeGrid(snapshot.settings);
 
     await _plan.refreshMaterialisation();
     _rewardsUnlockedSnapshot = _currentlyUnlockedRewardIds();
@@ -160,6 +176,401 @@ class MotivationController extends ChangeNotifier {
 
     _ready = true;
     notifyListeners();
+  }
+
+  /// One-time seed for the 9×9 Life Grid: renames/extends categories into
+  /// the eight life areas, adds the default daily/weekly/monthly tasks and
+  /// milestones. Guarded by the `lifeGridSeeded` flag so it never re-adds or
+  /// overwrites anything on later launches — existing habits are untouched.
+  Future<void> _seedLifeGrid(Map<String, Object?> settings) async {
+    final alreadySeeded = settings['lifeGridSeeded'] as bool? ?? false;
+    if (alreadySeeded) return;
+    final now = DateTime.now();
+    const allDays = {1, 2, 3, 4, 5, 6, 7};
+
+    // Rename/flag the five existing categories that double as life areas.
+    for (final seed in lifeAreaSeeds) {
+      final exists = _categories.any((c) => c.id == seed.categoryId);
+      if (!exists) continue;
+      await _plan.updateCategory(
+        seed.categoryId,
+        name: seed.name,
+        iconKey: seed.iconKey,
+        isFocusArea: seed.isFocusArea,
+      );
+    }
+    // Add the three genuinely new life-area categories.
+    for (final seed in lifeAreaSeeds) {
+      if (_categories.any((c) => c.id == seed.categoryId)) continue;
+      final category = TaskCategory(
+        id: seed.categoryId,
+        name: seed.name,
+        colorValue: seed.colorValue,
+        iconKey: seed.iconKey,
+        sortOrder: _categories.length,
+        isFocusArea: seed.isFocusArea,
+      );
+      _categories.add(category);
+      await _database.saveCategory(category);
+    }
+
+    TaskDefinition daily({
+      required String id,
+      required String title,
+      required String categoryId,
+      required int xp,
+      required String note,
+      RecurrenceRule? recurrence,
+      HabitTarget? target,
+    }) {
+      return TaskDefinition(
+        id: id,
+        title: title,
+        note: note,
+        section: 'Life Grid',
+        categoryId: categoryId,
+        xp: xp,
+        target: target,
+        recurrence: recurrence ?? RecurrenceRule.fixedWeekdays(allDays),
+        createdAt: now,
+        updatedAt: now,
+      );
+    }
+
+    final dailyHabits = [
+      daily(
+        id: LifeGridIds.dailyMovement,
+        title: 'Daily Movement',
+        categoryId: 'health',
+        xp: 10,
+        note: 'Approximately 7,500+ steps, or otherwise intentional movement.',
+      ),
+      daily(
+        id: LifeGridIds.balancedMeals,
+        title: 'Balanced Meals',
+        categoryId: 'health',
+        xp: 5,
+        note: 'At least two main meals built around protein and nutritious food.',
+      ),
+      daily(
+        id: LifeGridIds.protectSleep,
+        title: 'Protect Sleep',
+        categoryId: 'health',
+        xp: 5,
+        note: 'Give yourself approximately 7 hours of sleep opportunity.',
+        recurrence: const RecurrenceRule.timesPerWeek(5),
+        target: const HabitTarget(amount: 7, unit: TargetUnit.hours),
+      ),
+      daily(
+        id: LifeGridIds.decideAct,
+        title: 'Decide & Act',
+        categoryId: 'courage',
+        xp: 10,
+        note: 'Choose one normal, reversible decision you are overthinking. '
+            'Give yourself a maximum of ~10 minutes to think, then choose and '
+            'act. Success is making the decision, not whether it was perfect.',
+      ),
+      daily(
+        id: LifeGridIds.mentalReset,
+        title: 'Mental Reset',
+        categoryId: 'mindfulness',
+        xp: 5,
+        note: 'Spend ~5 minutes writing down what is occupying your mind and '
+            'classify it: ACT, ACCEPT, or LET GO.',
+        recurrence: const RecurrenceRule.timesPerWeek(5),
+      ),
+      daily(
+        id: LifeGridIds.learnOrBuild,
+        title: 'Learn or Build',
+        categoryId: 'coding',
+        xp: 10,
+        note: 'At least 20 focused minutes learning or building something '
+            'related to Flutter, Dart, iOS development, app development, '
+            'AI-assisted development, or one of your active projects.',
+        recurrence: const RecurrenceRule.timesPerWeek(4),
+        target: const HabitTarget(amount: 20, unit: TargetUnit.minutes),
+      ),
+    ];
+
+    TaskDefinition weekly({
+      required String id,
+      required String title,
+      required String categoryId,
+      required int xp,
+      required String note,
+      RecurrenceRule? recurrence,
+      HabitTarget? target,
+    }) {
+      return TaskDefinition(
+        id: id,
+        title: title,
+        note: note,
+        section: 'Life Grid',
+        categoryId: categoryId,
+        xp: xp,
+        target: target,
+        recurrence: recurrence ?? const RecurrenceRule.timesPerWeek(1),
+        createdAt: now,
+        updatedAt: now,
+      );
+    }
+
+    final weeklyTasks = [
+      weekly(
+        id: LifeGridIds.weeklyWorkout,
+        title: 'Workout',
+        categoryId: 'health',
+        xp: 20,
+        note: 'Minimum 2 workouts per week. A 3rd workout counts as bonus.',
+        recurrence: const RecurrenceRule.timesPerWeek(2),
+      ),
+      weekly(
+        id: LifeGridIds.weighReview,
+        title: 'Weigh & Review',
+        categoryId: 'health',
+        xp: 10,
+        note: 'Record ~3 weigh-ins during the week and enter the weekly average.',
+      ),
+      weekly(
+        id: LifeGridIds.courageChallenge,
+        title: 'Courage Challenge',
+        categoryId: 'courage',
+        xp: 25,
+        note: 'Do one thing that makes you slightly uncomfortable but supports '
+            'the person you want to become — ask instead of wondering, speak '
+            'openly, share something you made, attend something unfamiliar, '
+            'talk to somebody new, say no when appropriate, try something you '
+            'might fail at.',
+      ),
+      weekly(
+        id: LifeGridIds.createConnection,
+        title: 'Create Connection',
+        categoryId: 'relationships',
+        xp: 15,
+        note: 'Create one genuine opportunity for connection — invite a friend '
+            'somewhere, organize a game night, ask someone to grab food or '
+            'coffee, contact somebody you haven\'t seen recently. Success is '
+            'measured by your action, not the other person\'s response.',
+      ),
+      weekly(
+        id: LifeGridIds.improvementIdea,
+        title: 'Improvement Idea',
+        categoryId: 'work',
+        xp: 10,
+        note: 'Record at least one idea for improving a process, automating '
+            'something, solving a problem, creating a product, or challenging '
+            'an inefficient existing process.',
+      ),
+      weekly(
+        id: LifeGridIds.sideBusiness,
+        title: 'Side Business Session',
+        categoryId: 'financial',
+        xp: 20,
+        note: 'At least 60 focused minutes developing, researching or '
+            'validating a realistic additional income source or side business.',
+        target: const HabitTarget(amount: 60, unit: TargetUnit.minutes),
+      ),
+      weekly(
+        id: LifeGridIds.learningSession,
+        title: 'Learning Session',
+        categoryId: 'learning',
+        xp: 20,
+        note: '60–90 focused minutes improving Flutter, Dart, iOS, Xcode, '
+            'product development, or another useful skill.',
+        target: const HabitTarget(amount: 60, unit: TargetUnit.minutes),
+      ),
+      weekly(
+        id: LifeGridIds.deepBuild,
+        title: 'Deep Build',
+        categoryId: 'coding',
+        xp: 30,
+        note: 'At least two focused hours moving one active project forward — '
+            'ideally ending with something tangible: a working feature, '
+            'prototype, design, tested functionality, published build, useful '
+            'document, or user feedback.',
+        target: const HabitTarget(amount: 120, unit: TargetUnit.minutes),
+      ),
+      weekly(
+        id: LifeGridIds.funWithoutProductivity,
+        title: 'Fun Without Productivity',
+        categoryId: 'mindfulness',
+        xp: 15,
+        note: 'Do something because you enjoy it, not because it is '
+            'productive — board games, friends, gaming, a trip, a movie, a '
+            'hobby, a relaxed evening.',
+      ),
+      weekly(
+        id: LifeGridIds.weeklyLifeReview,
+        title: 'Weekly Life Review',
+        categoryId: 'mindfulness',
+        xp: 20,
+        note: 'Did I train at least twice? What was my weight trend? What did '
+            'I do despite overthinking? What did I create or learn? Did I '
+            'create meaningful social contact? Did I actually enjoy part of '
+            'this week? What is the ONE most important thing next week?',
+        recurrence: const RecurrenceRule.fixedWeekdays({7}),
+      ),
+    ];
+
+    TaskDefinition monthly({
+      required String id,
+      required String title,
+      required String categoryId,
+      required int xp,
+      required String note,
+    }) {
+      return TaskDefinition(
+        id: id,
+        title: title,
+        note: note,
+        section: 'Monthly Review',
+        categoryId: categoryId,
+        xp: xp,
+        recurrence: const RecurrenceRule.monthly(28),
+        createdAt: now,
+        updatedAt: now,
+      );
+    }
+
+    final monthlyReview = [
+      monthly(
+        id: LifeGridIds.monthlyHealth,
+        title: 'Monthly Review: Health',
+        categoryId: 'health',
+        xp: 50,
+        note: 'Review weight trend, training consistency, energy, fitness. '
+            'Long-term goal ~100kg or slightly below; starting range '
+            '~117–118kg.',
+      ),
+      monthly(
+        id: LifeGridIds.monthlyCourage,
+        title: 'Monthly Review: Courage & Confidence',
+        categoryId: 'courage',
+        xp: 50,
+        note: 'Identify the most meaningful situation this month where you '
+            'acted despite insecurity or overthinking.',
+      ),
+      monthly(
+        id: LifeGridIds.monthlyRelationships,
+        title: 'Monthly Review: Friends & Relationships',
+        categoryId: 'relationships',
+        xp: 40,
+        note: 'Who initiated contact? Who did you enjoy spending time with? '
+            'Which relationships felt reciprocal? Where did you spend too '
+            'much energy chasing clarity or attention? Not meant to score '
+            'people — just to notice healthy reciprocity.',
+      ),
+      monthly(
+        id: LifeGridIds.monthlyCareer,
+        title: 'Monthly Review: Career & Meaning',
+        categoryId: 'work',
+        xp: 40,
+        note: 'Choose one idea — process improvement, new thinking, '
+            'automation, product creation, professional independence — and '
+            'decide whether to pursue, save or discard it.',
+      ),
+      monthly(
+        id: LifeGridIds.monthlyFinancial,
+        title: 'Monthly Review: Financial Freedom',
+        categoryId: 'financial',
+        xp: 50,
+        note: 'Review saving/investing, side-business progress, additional-'
+            'income experiments. Run or define at least one small validation '
+            'experiment instead of a large financial commitment based only '
+            'on an idea.',
+      ),
+      monthly(
+        id: LifeGridIds.monthlyLearning,
+        title: 'Monthly Review: Adventure & Learning',
+        categoryId: 'learning',
+        xp: 50,
+        note: 'Record at least one new experience, new place, meaningful '
+            'learning milestone, or spontaneous activity.',
+      ),
+      monthly(
+        id: LifeGridIds.monthlyCreativity,
+        title: 'Ship Something',
+        categoryId: 'coding',
+        xp: 60,
+        note: 'Complete something tangible: an app feature, prototype, '
+            'TestFlight build, tester release, finished design, useful tool, '
+            'or published creation.',
+      ),
+      monthly(
+        id: LifeGridIds.monthlyHappiness,
+        title: 'Monthly Review: Happiness & Balance',
+        categoryId: 'mindfulness',
+        xp: 50,
+        note: 'Did you actually enjoy the life you lived this month? Score '
+            '1–10. What gave you energy? What drained you? What should you '
+            'do more of? What should you reduce? What is one change for next '
+            'month?',
+      ),
+    ];
+
+    for (final definition in [...dailyHabits, ...weeklyTasks, ...monthlyReview]) {
+      _definitions.add(definition);
+      await _database.saveDefinition(definition);
+    }
+
+    Future<void> milestone({
+      required String id,
+      required String title,
+      required String categoryId,
+      required int xp,
+      String description = '',
+      GoalStatus status = GoalStatus.inProgress,
+    }) async {
+      final record = Milestone(
+        id: id,
+        title: title,
+        description: description,
+        categoryId: categoryId,
+        xp: xp,
+        status: GoalStatus.notStarted,
+        createdAt: now,
+      );
+      _milestones.add(record);
+      await _database.saveMilestone(record);
+      if (status != GoalStatus.notStarted) {
+        await _plan.setMilestoneStatus(id, status);
+      }
+    }
+
+    await milestone(
+      id: LifeGridIds.milestoneLearnFlutter,
+      title: 'Learn Flutter / iOS',
+      categoryId: 'coding',
+      xp: 100,
+      status: GoalStatus.inProgress,
+    );
+    await milestone(
+      id: LifeGridIds.milestonePublishApp,
+      title: 'Publish an iOS App',
+      categoryId: 'coding',
+      xp: 150,
+      description: 'Dev environment → working app → stable core → testing → '
+          'TestFlight → App Store preparation → publication.',
+      status: GoalStatus.inProgress,
+    );
+    await milestone(
+      id: LifeGridIds.milestoneReach100kg,
+      title: 'Reach ~100 kg',
+      categoryId: 'health',
+      xp: 100,
+      status: GoalStatus.inProgress,
+    );
+    await milestone(
+      id: LifeGridIds.milestoneHardware,
+      title: 'Development hardware acquired',
+      categoryId: 'coding',
+      xp: 50,
+      description: '2020 M1 MacBook Air, acquired to support learning iOS '
+          'development and building future projects.',
+      status: GoalStatus.achieved,
+    );
+
+    await _database.saveSetting('lifeGridSeeded', true);
   }
 
   /// Call when the app resumes / on the first frame of a new day.
@@ -253,6 +664,123 @@ class MotivationController extends ChangeNotifier {
     final toasts = List<String>.from(_pendingAchievementToasts);
     _pendingAchievementToasts.clear();
     return toasts;
+  }
+
+  // ---- Life Grid --------------------------------------------------------
+
+  List<Milestone> get milestones => List.unmodifiable(_milestones);
+  List<WeightEntry> get weightEntries => List.unmodifiable(_weightEntries);
+  WeightEntry? get latestWeightEntry =>
+      _weightEntries.isEmpty ? null : _weightEntries.last;
+
+  /// The eight life-area categories, in Life Grid display order.
+  List<TaskCategory> get lifeAreaCategories {
+    final byId = {for (final c in _categories) c.id: c};
+    return [
+      for (final seed in lifeAreaSeeds)
+        if (byId[seed.categoryId] != null) byId[seed.categoryId]!,
+    ];
+  }
+
+  List<Milestone> milestonesForCategory(String categoryId) =>
+      _milestones.where((m) => m.categoryId == categoryId).toList();
+
+  /// XP awarded this calendar month for tasks/milestones in [categoryId].
+  int xpThisMonthForCategory(String categoryId) {
+    final now = DateTime.now();
+    var xp = 0;
+    for (final occurrence in _occurrences) {
+      if (occurrence.categoryId != categoryId) continue;
+      final completion = occurrence.completion;
+      if (completion == null) continue;
+      if (completion.completedAt.year != now.year ||
+          completion.completedAt.month != now.month) {
+        continue;
+      }
+      xp += completion.awardedXp;
+    }
+    return xp;
+  }
+
+  Future<void> logWeight(DateTime date, double kg) async {
+    await _plan.logWeight(date, kg);
+    await _afterWrite();
+  }
+
+  Future<void> deleteWeightEntry(String id) async {
+    await _plan.deleteWeightEntry(id);
+    await _afterWrite();
+  }
+
+  Future<Milestone> addMilestone({
+    required String title,
+    required String categoryId,
+    required int xp,
+    String description = '',
+    DateTime? targetDate,
+  }) async {
+    final milestone = await _plan.addMilestone(
+      title: title,
+      categoryId: categoryId,
+      xp: xp,
+      description: description,
+      targetDate: targetDate,
+    );
+    await _afterWrite();
+    return milestone;
+  }
+
+  Future<void> updateMilestone(
+    String id, {
+    String? title,
+    String? description,
+    String? categoryId,
+    int? xp,
+    DateTime? targetDate,
+    bool clearTargetDate = false,
+  }) async {
+    await _plan.updateMilestone(
+      id,
+      title: title,
+      description: description,
+      categoryId: categoryId,
+      xp: xp,
+      targetDate: targetDate,
+      clearTargetDate: clearTargetDate,
+    );
+    await _afterWrite();
+  }
+
+  Future<void> setMilestoneStatus(String id, GoalStatus status) async {
+    await _plan.setMilestoneStatus(id, status);
+    await _afterWrite();
+  }
+
+  Future<void> deleteMilestone(String id) async {
+    await _plan.deleteMilestone(id);
+    await _afterWrite();
+  }
+
+  /// This week's count of fully-completed occurrences from one seeded Life
+  /// Grid definition (workouts, Courage Challenges, ...).
+  int weeklyCompletionCount(String definitionId) {
+    return _occurrences
+        .where((o) =>
+            o.sourceDefinitionId == definitionId &&
+            o.isFullyCompleted &&
+            isSameWeek(o.date, today))
+        .length;
+  }
+
+  /// "2 workouts + 1 build session + 1 Courage Challenge" — a meaningful week
+  /// even if it isn't a perfect one. See `domain/life_grid.dart`.
+  MinimumViableWeekStatus get minimumViableWeekStatus {
+    return MinimumViableWeekStatus(
+      workoutsDone: weeklyCompletionCount(LifeGridIds.weeklyWorkout),
+      workoutsTarget: ninetyDayFocus.minWorkoutsPerWeek,
+      deepBuildDone: weeklyCompletionCount(LifeGridIds.deepBuild) > 0,
+      courageDone: weeklyCompletionCount(LifeGridIds.courageChallenge) > 0,
+    );
   }
 
   // ---- Rewards --------------------------------------------------------
@@ -504,6 +1032,8 @@ class MotivationController extends ChangeNotifier {
     String section = '',
     Difficulty? difficulty,
     HabitTarget? target,
+    Priority priority = Priority.normal,
+    bool isBonus = false,
   }) async {
     await _plan.addOneOff(
       date: date,
@@ -514,6 +1044,8 @@ class MotivationController extends ChangeNotifier {
       section: section,
       difficulty: difficulty,
       target: target,
+      priority: priority,
+      isBonus: isBonus,
     );
     await _afterWrite();
   }
@@ -527,6 +1059,9 @@ class MotivationController extends ChangeNotifier {
     String section = '',
     Difficulty? difficulty,
     HabitTarget? target,
+    Priority priority = Priority.normal,
+    bool? isFocus,
+    bool isBonus = false,
   }) async {
     await _plan.createRecurring(
       title: title,
@@ -537,6 +1072,9 @@ class MotivationController extends ChangeNotifier {
       section: section,
       difficulty: difficulty,
       target: target,
+      priority: priority,
+      isFocus: isFocus,
+      isBonus: isBonus,
     );
     await _afterWrite();
   }
@@ -552,6 +1090,10 @@ class MotivationController extends ChangeNotifier {
     int? xp,
     HabitTarget? target,
     bool clearTarget = false,
+    Priority? priority,
+    bool? isFocus,
+    bool clearIsFocus = false,
+    bool? isBonus,
     RecurrenceRule? recurrence,
     bool? isPaused,
     bool? isArchived,
@@ -567,6 +1109,10 @@ class MotivationController extends ChangeNotifier {
       xp: xp,
       target: target,
       clearTarget: clearTarget,
+      priority: priority,
+      isFocus: isFocus,
+      clearIsFocus: clearIsFocus,
+      isBonus: isBonus,
       recurrence: recurrence,
       isPaused: isPaused,
       isArchived: isArchived,
@@ -750,6 +1296,7 @@ class MotivationController extends ChangeNotifier {
     int? colorValue,
     String? iconKey,
     bool? isArchived,
+    bool? isFocusArea,
   }) async {
     await _plan.updateCategory(
       id,
@@ -757,6 +1304,7 @@ class MotivationController extends ChangeNotifier {
       colorValue: colorValue,
       iconKey: iconKey,
       isArchived: isArchived,
+      isFocusArea: isFocusArea,
     );
     await _afterWrite();
   }
@@ -910,6 +1458,8 @@ class MotivationController extends ChangeNotifier {
     _templates.clear();
     _proposals.clear();
     _rewards.clear();
+    _milestones.clear();
+    _weightEntries.clear();
     _achievementUnlocks.clear();
     _categories.clear();
     for (final category in TaskCategory.defaults()) {

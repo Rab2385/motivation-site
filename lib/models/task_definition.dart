@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../domain/difficulty.dart';
 import '../domain/habit_target.dart';
+import '../domain/priority.dart';
 import 'recurrence_rule.dart';
 
 /// The template for a recurring task. It is never rendered as a quest itself;
@@ -20,6 +21,9 @@ class TaskDefinition {
     this.section = '',
     this.difficulty,
     this.target,
+    this.priority = Priority.normal,
+    this.isFocus,
+    this.isBonus = false,
     this.isPaused = false,
     this.isArchived = false,
   });
@@ -41,6 +45,16 @@ class TaskDefinition {
   /// straight tap.
   final HabitTarget? target;
 
+  final Priority priority;
+
+  /// Overrides the category's `isFocusArea` for this one task, when set.
+  /// Null means "inherit from the category" (the normal case).
+  final bool? isFocus;
+
+  /// Marks this as extra credit beyond the minimum for its recurrence (e.g.
+  /// a 3rd weekly workout when the quota target is 2). Purely a display flag.
+  final bool isBonus;
+
   final RecurrenceRule recurrence;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -61,6 +75,10 @@ class TaskDefinition {
     int? xp,
     HabitTarget? target,
     bool clearTarget = false,
+    Priority? priority,
+    bool? isFocus,
+    bool clearIsFocus = false,
+    bool? isBonus,
     RecurrenceRule? recurrence,
     DateTime? updatedAt,
     bool? isPaused,
@@ -75,6 +93,9 @@ class TaskDefinition {
       difficulty: clearDifficulty ? null : (difficulty ?? this.difficulty),
       xp: xp ?? this.xp,
       target: clearTarget ? null : (target ?? this.target),
+      priority: priority ?? this.priority,
+      isFocus: clearIsFocus ? null : (isFocus ?? this.isFocus),
+      isBonus: isBonus ?? this.isBonus,
       recurrence: recurrence ?? this.recurrence,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -92,6 +113,9 @@ class TaskDefinition {
     'difficulty': difficulty?.name,
     'xp': xp,
     'target': target?.toMap(),
+    'priority': priority.name,
+    'isFocus': isFocus,
+    'isBonus': isBonus,
     'recurrence': recurrence.toMap(),
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
@@ -112,6 +136,9 @@ class TaskDefinition {
       target: targetMap is Map
           ? HabitTarget.fromMap(targetMap.cast<String, Object?>())
           : null,
+      priority: Priority.fromName(map['priority'] as String?),
+      isFocus: map['isFocus'] as bool?,
+      isBonus: map['isBonus'] as bool? ?? false,
       recurrence: RecurrenceRule.fromMap(
         (map['recurrence'] as Map).cast<String, Object?>(),
       ),

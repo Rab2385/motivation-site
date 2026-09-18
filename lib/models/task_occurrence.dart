@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../domain/difficulty.dart';
 import '../domain/habit_target.dart';
+import '../domain/priority.dart';
 import '../util/dates.dart';
 import 'completion.dart';
 
@@ -34,6 +35,8 @@ class TaskOccurrence {
     this.difficulty,
     this.target,
     this.loggedAmount = 0,
+    this.priority = Priority.normal,
+    this.isBonus = false,
     this.sourceDefinitionId,
     this.isForked = false,
     this.isSkipped = false,
@@ -61,6 +64,12 @@ class TaskOccurrence {
   /// Progress logged so far against [target]. Reaching it auto-completes
   /// the occurrence; logging less just updates what the row shows.
   final double loggedAmount;
+
+  final Priority priority;
+
+  /// Extra credit beyond the minimum for its recurrence (e.g. a 3rd weekly
+  /// workout when the quota target is 2). Purely a display flag.
+  final bool isBonus;
 
   final OccurrenceOrigin origin;
 
@@ -99,6 +108,8 @@ class TaskOccurrence {
     HabitTarget? target,
     bool clearTarget = false,
     double? loggedAmount,
+    Priority? priority,
+    bool? isBonus,
     OccurrenceOrigin? origin,
     String? sourceDefinitionId,
     bool clearSource = false,
@@ -120,6 +131,8 @@ class TaskOccurrence {
       xp: xp ?? this.xp,
       target: clearTarget ? null : (target ?? this.target),
       loggedAmount: loggedAmount ?? this.loggedAmount,
+      priority: priority ?? this.priority,
+      isBonus: isBonus ?? this.isBonus,
       origin: origin ?? this.origin,
       sourceDefinitionId:
           clearSource ? null : (sourceDefinitionId ?? this.sourceDefinitionId),
@@ -145,6 +158,8 @@ class TaskOccurrence {
         'xp': xp,
         'target': target?.toMap(),
         'loggedAmount': loggedAmount,
+        'priority': priority.name,
+        'isBonus': isBonus,
         'origin': origin.name,
         'sourceDefinitionId': sourceDefinitionId,
         'isForked': isForked,
@@ -170,6 +185,8 @@ class TaskOccurrence {
           ? HabitTarget.fromMap(targetMap.cast<String, Object?>())
           : null,
       loggedAmount: (map['loggedAmount'] as num? ?? 0).toDouble(),
+      priority: Priority.fromName(map['priority'] as String?),
+      isBonus: map['isBonus'] as bool? ?? false,
       origin: OccurrenceOrigin.values.firstWhere(
         (value) => value.name == map['origin'],
         orElse: () => OccurrenceOrigin.oneOff,

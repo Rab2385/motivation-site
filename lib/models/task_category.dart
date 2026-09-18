@@ -16,6 +16,8 @@ const Map<String, IconData> categoryIcons = {
   'social': Icons.groups_outlined,
   'money': Icons.savings_outlined,
   'shopping': Icons.shopping_bag_outlined,
+  'courage': Icons.bolt_outlined,
+  'compass': Icons.explore_outlined,
   'star': Icons.star_border,
 };
 
@@ -23,6 +25,11 @@ IconData iconForKey(String key) => categoryIcons[key] ?? Icons.star_border;
 
 /// A user-managed category. Ships with seeded defaults; the user can add,
 /// rename, recolour and archive their own.
+///
+/// [isFocusArea] doubles this up as a Life Grid area (see `domain/life_grid.dart`)
+/// when the category is one of the eight life areas: true means it's a
+/// current 90-day priority, false means "maintenance mode". It's meaningless
+/// for a plain non-life-grid category.
 @immutable
 class TaskCategory {
   const TaskCategory({
@@ -32,6 +39,7 @@ class TaskCategory {
     required this.iconKey,
     required this.sortOrder,
     this.isArchived = false,
+    this.isFocusArea = false,
   });
 
   final String id;
@@ -40,6 +48,7 @@ class TaskCategory {
   final String iconKey;
   final int sortOrder;
   final bool isArchived;
+  final bool isFocusArea;
 
   Color get color => Color(colorValue);
 
@@ -51,6 +60,7 @@ class TaskCategory {
     String? iconKey,
     int? sortOrder,
     bool? isArchived,
+    bool? isFocusArea,
   }) {
     return TaskCategory(
       id: id,
@@ -59,6 +69,7 @@ class TaskCategory {
       iconKey: iconKey ?? this.iconKey,
       sortOrder: sortOrder ?? this.sortOrder,
       isArchived: isArchived ?? this.isArchived,
+      isFocusArea: isFocusArea ?? this.isFocusArea,
     );
   }
 
@@ -69,6 +80,7 @@ class TaskCategory {
     'iconKey': iconKey,
     'sortOrder': sortOrder,
     'isArchived': isArchived,
+    'isFocusArea': isFocusArea,
   };
 
   factory TaskCategory.fromMap(Map<String, Object?> map) {
@@ -79,10 +91,13 @@ class TaskCategory {
       iconKey: map['iconKey'] as String? ?? 'star',
       sortOrder: (map['sortOrder'] as num? ?? 0).toInt(),
       isArchived: map['isArchived'] as bool? ?? false,
+      isFocusArea: map['isFocusArea'] as bool? ?? false,
     );
   }
 
-  /// Seeded on first run.
+  /// Seeded on first run. Six of these double as Life Grid areas once
+  /// [MotivationController] runs the Life Grid seed (see `life_grid.dart`);
+  /// `fitness`, `home` and `shopping` stay as plain, non-life-grid categories.
   static List<TaskCategory> defaults() => const [
     TaskCategory(
       id: 'fitness',
