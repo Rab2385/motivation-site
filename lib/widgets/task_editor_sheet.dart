@@ -66,6 +66,7 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
   RecurrenceKind _recurrenceKind = RecurrenceKind.fixedWeekdays;
   final Set<int> _weekdays = {};
   int _timesPerWeek = 3;
+  int _monthlyDay = 1;
   bool _xpTouched = false;
   bool _hasTarget = false;
   TargetUnit _targetUnit = TargetUnit.minutes;
@@ -81,8 +82,11 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
 
     _title = TextEditingController(text: source?.title ?? def?.title ?? '');
     _note = TextEditingController(text: source?.note ?? def?.note ?? '');
-    _section = TextEditingController(text: source?.section ?? def?.section ?? '');
-    _categoryId = source?.categoryId ??
+    _section = TextEditingController(
+      text: source?.section ?? def?.section ?? '',
+    );
+    _categoryId =
+        source?.categoryId ??
         def?.categoryId ??
         widget.controller.activeCategories.firstOrNull?.id ??
         'fitness';
@@ -102,8 +106,10 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
       _recurring = true;
       _recurrenceKind = def.recurrence.kind;
       _weekdays.addAll(def.recurrence.weekdays);
-      _timesPerWeek =
-          def.recurrence.timesPerWeek == 0 ? 3 : def.recurrence.timesPerWeek;
+      _timesPerWeek = def.recurrence.timesPerWeek == 0
+          ? 3
+          : def.recurrence.timesPerWeek;
+      _monthlyDay = def.recurrence.isMonthly ? def.recurrence.dayOfMonth : 1;
     } else if (widget.startAsRecurring) {
       _recurring = true;
     }
@@ -214,9 +220,14 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
   }
 
   RecurrenceRule _buildRecurrence() {
-    return _recurrenceKind == RecurrenceKind.fixedWeekdays
-        ? RecurrenceRule.fixedWeekdays(Set.of(_weekdays))
-        : RecurrenceRule.timesPerWeek(_timesPerWeek);
+    switch (_recurrenceKind) {
+      case RecurrenceKind.fixedWeekdays:
+        return RecurrenceRule.fixedWeekdays(Set.of(_weekdays));
+      case RecurrenceKind.timesPerWeek:
+        return RecurrenceRule.timesPerWeek(_timesPerWeek);
+      case RecurrenceKind.monthly:
+        return RecurrenceRule.monthly(_monthlyDay);
+    }
   }
 
   @override
@@ -320,7 +331,9 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text(AppText.targetLabel),
-              subtitle: Text(_hasTarget ? AppText.targetHint : AppText.noTarget),
+              subtitle: Text(
+                _hasTarget ? AppText.targetHint : AppText.noTarget,
+              ),
               value: _hasTarget,
               onChanged: (value) => setState(() => _hasTarget = value),
             ),
@@ -330,9 +343,12 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
                   Expanded(
                     child: TextField(
                       controller: _targetAmount,
-                      decoration: const InputDecoration(labelText: AppText.amount),
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: AppText.amount,
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       onChanged: (_) => setState(() {}),
                     ),
                   ),
@@ -386,6 +402,10 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
               value: RecurrenceKind.timesPerWeek,
               label: Text(AppText.timesPerWeek),
             ),
+            ButtonSegment(
+              value: RecurrenceKind.monthly,
+              label: Text(AppText.monthly),
+            ),
           ],
           selected: {_recurrenceKind},
           onSelectionChanged: (value) =>
@@ -410,7 +430,7 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
                 ),
             ],
           )
-        else
+        else if (_recurrenceKind == RecurrenceKind.timesPerWeek)
           Row(
             children: [
               IconButton.filledTonal(
@@ -421,14 +441,45 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text('$_timesPerWeek × / week',
-                    style: theme.textTheme.titleMedium),
+                child: Text(
+                  '$_timesPerWeek × / week',
+                  style: theme.textTheme.titleMedium,
+                ),
               ),
               IconButton.filledTonal(
                 onPressed: _timesPerWeek < 7
                     ? () => setState(() => _timesPerWeek++)
                     : null,
                 icon: const Icon(Icons.add),
+              ),
+            ],
+          )
+        else
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text('Day'),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 84,
+                child: DropdownButtonFormField<int>(
+                  initialValue: _monthlyDay,
+                  isDense: true,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                  ),
+                  items: [
+                    for (var day = 1; day <= 31; day++)
+                      DropdownMenuItem(value: day, child: Text(day.toString())),
+                  ],
+                  onChanged: (value) =>
+                      setState(() => _monthlyDay = value ?? _monthlyDay),
+                ),
               ),
             ],
           ),

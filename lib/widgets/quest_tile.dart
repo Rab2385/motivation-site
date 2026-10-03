@@ -53,15 +53,20 @@ class QuestTile extends StatelessWidget {
     final done = occurrence.isFullyCompleted;
     final partial = occurrence.isCompleted && !done;
     final streak =
-        showStreak && occurrence.isRecurring && occurrence.sourceDefinitionId != null
-            ? controller.streakFor(occurrence.sourceDefinitionId!).current
-            : 0;
+        showStreak &&
+            occurrence.isRecurring &&
+            occurrence.sourceDefinitionId != null
+        ? controller.streakFor(occurrence.sourceDefinitionId!).current
+        : 0;
 
     String subtitle;
     if (occurrence.isSkipped) {
       subtitle = AppText.plannedSkip;
     } else if (occurrence.hasTarget) {
-      subtitle = formatTargetProgress(occurrence.loggedAmount, occurrence.target!);
+      subtitle = formatTargetProgress(
+        occurrence.loggedAmount,
+        occurrence.target!,
+      );
     } else if (occurrence.note.trim().isNotEmpty) {
       subtitle = occurrence.note.trim();
     } else {
@@ -72,13 +77,17 @@ class QuestTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(flat ? 6 : 10),
       onTap: () => _onTapCheckbox(context),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(flat ? 4 : 12, 9, 4, 9),
+        padding: EdgeInsets.fromLTRB(flat ? 4 : 12, 8, 4, 8),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
               padding: const EdgeInsets.only(top: 1),
-              child: _Bracket(done: done, partial: partial, skipped: occurrence.isSkipped),
+              child: _Bracket(
+                done: done,
+                partial: partial,
+                skipped: occurrence.isSkipped,
+              ),
             ),
             const SizedBox(width: 8),
             Icon(category.icon, size: 15, color: category.color),
@@ -89,42 +98,59 @@ class QuestTile extends StatelessWidget {
                 children: [
                   Text(
                     occurrence.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: true,
                     style: theme.textTheme.bodyLarge?.copyWith(
                       fontSize: 13.5,
-                      decoration:
-                          occurrence.isSkipped ? TextDecoration.lineThrough : null,
+                      height: 1.25,
+                      decoration: occurrence.isSkipped
+                          ? TextDecoration.lineThrough
+                          : null,
                       color: occurrence.isSkipped
                           ? AppTheme.textLow
                           : (done ? AppTheme.textMid : AppTheme.textHigh),
                     ),
                   ),
-                  Text('// $subtitle',
+                  if (subtitle.isNotEmpty)
+                    Text(
+                      subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTheme.comment.copyWith(fontSize: 11.5)),
+                      softWrap: false,
+                      style: AppTheme.comment.copyWith(fontSize: 10.5),
+                    ),
                 ],
               ),
             ),
             if (streak > 0) ...[
-              const Icon(Icons.local_fire_department,
-                  size: 13, color: AppTheme.streakAccent),
+              const Icon(
+                Icons.local_fire_department,
+                size: 12,
+                color: AppTheme.streakAccent,
+              ),
               const SizedBox(width: 2),
-              Text('$streak',
-                  style: const TextStyle(
-                      color: AppTheme.streakAccent,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700)),
-              const SizedBox(width: 10),
+              Text(
+                '$streak',
+                style: const TextStyle(
+                  color: AppTheme.streakAccent,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 8),
             ],
             Text(
-              '+${occurrence.isCompleted ? occurrence.completion!.awardedXp : occurrence.xp} XP',
+              '+${occurrence.isCompleted ? occurrence.completion!.awardedXp : occurrence.xp}',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 11.5,
                 fontWeight: FontWeight.w700,
-                color:
-                    occurrence.isSkipped ? AppTheme.textLow : AppTheme.amberBright,
+                color: occurrence.isSkipped
+                    ? AppTheme.textLow
+                    : AppTheme.amberBright,
               ),
             ),
+            const SizedBox(width: 4),
             _QuestMenu(controller: controller, occurrence: occurrence),
           ],
         ),
@@ -135,7 +161,8 @@ class QuestTile extends StatelessWidget {
       return Container(
         decoration: showDivider
             ? const BoxDecoration(
-                border: Border(bottom: BorderSide(color: AppTheme.hairline)))
+                border: Border(bottom: BorderSide(color: AppTheme.hairline)),
+              )
             : null,
         child: row,
       );
@@ -145,7 +172,11 @@ class QuestTile extends StatelessWidget {
 }
 
 class _Bracket extends StatelessWidget {
-  const _Bracket({required this.done, required this.partial, required this.skipped});
+  const _Bracket({
+    required this.done,
+    required this.partial,
+    required this.skipped,
+  });
 
   final bool done;
   final bool partial;

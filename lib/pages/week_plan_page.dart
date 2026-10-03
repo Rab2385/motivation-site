@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_text.dart';
+import '../models/recurrence_rule.dart';
+import '../models/task_definition.dart';
 import '../state/motivation_controller.dart';
 import '../widgets/attach_task_sheet.dart';
 import '../widgets/page_scaffold.dart';
@@ -22,6 +24,21 @@ class _WeekPlanPageState extends State<WeekPlanPage> {
 
   MotivationController get controller => widget.controller;
 
+  String _recurrenceSummary(TaskDefinition definition) {
+    switch (definition.recurrence.kind) {
+      case RecurrenceKind.fixedWeekdays:
+        final days = definition.recurrence.weekdays.toList()..sort();
+        final labels = days
+            .map((day) => AppText.weekdayShort[day - 1])
+            .join(', ');
+        return labels.isEmpty ? 'Fixed weekdays' : labels;
+      case RecurrenceKind.timesPerWeek:
+        return '${definition.recurrence.timesPerWeek} / week';
+      case RecurrenceKind.monthly:
+        return 'Monthly · ${definition.recurrence.dayOfMonth}';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PageScaffold(
@@ -33,12 +50,29 @@ class _WeekPlanPageState extends State<WeekPlanPage> {
           onSelected: (value) {
             if (value == 'save') _saveTemplate();
             if (value == 'apply') _applyTemplate();
+            if (value == 'set-default') _setDefaultTemplate();
+            if (value == 'use-default') _useDefaultTemplate();
           },
           itemBuilder: (context) => [
-            const PopupMenuItem(value: 'save', child: Text(AppText.saveAsTemplate)),
+            const PopupMenuItem(
+              value: 'save',
+              child: Text(AppText.saveAsTemplate),
+            ),
             if (controller.templates.isNotEmpty)
               const PopupMenuItem(
-                  value: 'apply', child: Text(AppText.applyTemplate)),
+                value: 'apply',
+                child: Text(AppText.applyTemplate),
+              ),
+            if (controller.templates.isNotEmpty)
+              const PopupMenuItem(
+                value: 'set-default',
+                child: Text(AppText.setAsDefaultWeek),
+              ),
+            if (controller.defaultWeekTemplateId.isNotEmpty)
+              const PopupMenuItem(
+                value: 'use-default',
+                child: Text(AppText.useDefaultWeek),
+              ),
           ],
         ),
       ],
@@ -69,8 +103,9 @@ class _WeekPlanPageState extends State<WeekPlanPage> {
                       avatar: Icon(
                         controller.categoryById(definition.categoryId).icon,
                         size: 16,
-                        color:
-                            controller.categoryById(definition.categoryId).color,
+                        color: controller
+                            .categoryById(definition.categoryId)
+                            .color,
                       ),
                       label: Text(
                         '${definition.title}  '
@@ -82,11 +117,12 @@ class _WeekPlanPageState extends State<WeekPlanPage> {
                 ],
               ),
             ],
-            for (final day in days) _DaySection(
-              controller: controller,
-              date: day,
-              onAdd: () => _addMenu(day),
-            ),
+            for (final day in days)
+              _DaySection(
+                controller: controller,
+                date: day,
+                onAdd: () => _addMenu(day),
+              ),
           ],
         );
       },
@@ -127,8 +163,12 @@ class _WeekPlanPageState extends State<WeekPlanPage> {
       case 'oneoff':
         showTaskEditorSheet(context, controller, date: day);
       case 'recurring':
-        showTaskEditorSheet(context, controller,
-            date: day, startAsRecurring: true);
+        showTaskEditorSheet(
+          context,
+          controller,
+          date: day,
+          startAsRecurring: true,
+        );
       case 'attach':
         showAttachTaskSheet(context, controller, day);
     }
@@ -151,7 +191,9 @@ class _WeekPlanPageState extends State<WeekPlanPage> {
     );
     if (chosen == null) return;
     await controller.placeQuotaOccurrence(
-        definitionId: definitionId, date: chosen);
+      definitionId: definitionId,
+      date: chosen,
+    );
   }
 
   Future<void> _saveTemplate() async {
@@ -203,9 +245,56 @@ class _WeekPlanPageState extends State<WeekPlanPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
+        content: Text('${result.added} added, ${result.skipped} already there'),
+      ),
+    );
+  }
+
+  Future<void> _setDefaultTemplate() async {
+    final templateId = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text(AppText.setAsDefaultWeek),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, ''),
+            child: const Text('Clear standard week'),
+          ),
+          for (final template in controller.templates)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, template.id),
+              child: Text(template.name),
+            ),
+        ],
+      ),
+    );
+    if (templateId == null) return;
+    await controller.setDefaultWeekTemplate(
+      templateId.isEmpty ? null : templateId,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
         content: Text(
-          '${result.added} added, ${result.skipped} already there',
+          templateId.isEmpty
+              ? 'Standard week cleared.'
+              : 'Standard week updated.',
         ),
+      ),
+    );
+  }
+
+  Future<void> _useDefaultTemplate() async {
+    final template = controller.defaultWeekTemplate;
+    if (template == null) return;
+    final result = await controller.applyTemplate(
+      templateId: template.id,
+      weekOffset: _weekOffset,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${result.added} added, ${result.skipped} already there'),
       ),
     );
   }
@@ -246,8 +335,10 @@ class _DaySection extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Text('${date.day}.${date.month}.',
-                  style: theme.textTheme.bodySmall),
+              Text(
+                '${date.day}.${date.month}.',
+                style: theme.textTheme.bodySmall,
+              ),
               const Spacer(),
               if (!isPast)
                 IconButton(
@@ -275,8 +366,8 @@ class _DaySection extends StatelessWidget {
                         hint.lightestDay == null
                             ? AppText.dayLooksHeavy
                             : '${AppText.dayLooksHeavy} '
-                                '${AppText.moveSomethingTo}'
-                                '${AppText.weekdayLong[hint.lightestDay!.weekday - 1]}?',
+                                  '${AppText.moveSomethingTo}'
+                                  '${AppText.weekdayLong[hint.lightestDay!.weekday - 1]}?',
                         style: theme.textTheme.bodySmall,
                       ),
                     ),

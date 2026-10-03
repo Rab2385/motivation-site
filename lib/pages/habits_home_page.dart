@@ -20,7 +20,11 @@ import '../widgets/terminal_widgets.dart';
 /// status/calendar/heatmap, the day's habit list grouped by section, and a
 /// closeable stats overview panel.
 class HabitsHomePage extends StatelessWidget {
-  const HabitsHomePage({super.key, required this.controller, required this.nav});
+  const HabitsHomePage({
+    super.key,
+    required this.controller,
+    required this.nav,
+  });
 
   final MotivationController controller;
   final HomeNavState nav;
@@ -82,8 +86,14 @@ class HabitsHomePage extends StatelessWidget {
                 child: Column(
                   children: [
                     _CompactStatus(controller: controller),
+                    if (controller.isWeeklyReviewDueFor(controller.today)) ...[
+                      const SizedBox(height: 14),
+                      _WeeklyReviewCard(controller: controller),
+                    ],
                     const SizedBox(height: 14),
-                    TerminalPanel(child: _NinetyDayFocusPanel(controller: controller)),
+                    TerminalPanel(
+                      child: _NinetyDayFocusPanel(controller: controller),
+                    ),
                     const SizedBox(height: 14),
                     Expanded(child: center),
                   ],
@@ -98,14 +108,24 @@ class HabitsHomePage extends StatelessWidget {
           );
         }
 
+        final showWeeklyReview = controller.isWeeklyReviewDueFor(today);
+
         return ListView(
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
           children: [
             _CompactStatus(controller: controller),
+            if (showWeeklyReview) ...[
+              const SizedBox(height: 14),
+              _WeeklyReviewCard(controller: controller),
+            ],
             const SizedBox(height: 14),
-            _WeekStrip(controller: controller, selected: date, onSelect: (d) {
-              nav.shiftDay(d.difference(nav.date).inDays);
-            }),
+            _WeekStrip(
+              controller: controller,
+              selected: date,
+              onSelect: (d) {
+                nav.shiftDay(d.difference(nav.date).inDays);
+              },
+            ),
             const SizedBox(height: 14),
             TerminalPanel(child: _NinetyDayFocusPanel(controller: controller)),
             const SizedBox(height: 14),
@@ -149,6 +169,10 @@ class _LeftColumn extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TerminalPanel(child: _StatusBlock(controller: controller)),
+          if (controller.isWeeklyReviewDueFor(controller.today)) ...[
+            const SizedBox(height: 14),
+            _WeeklyReviewCard(controller: controller),
+          ],
           const SizedBox(height: 14),
           TerminalPanel(child: _NinetyDayFocusPanel(controller: controller)),
           const SizedBox(height: 14),
@@ -181,6 +205,121 @@ class _LeftColumn extends StatelessWidget {
   }
 }
 
+class _WeeklyReviewCard extends StatelessWidget {
+  const _WeeklyReviewCard({required this.controller});
+
+  final MotivationController controller;
+
+  void _openReviewSheet(BuildContext context) {
+    final winsController = TextEditingController();
+    final missesController = TextEditingController();
+    final nextFocusController = TextEditingController();
+
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppTheme.card,
+          title: const Text('weekly review'),
+          content: SizedBox(
+            width: 420,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('What went well?'),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: winsController,
+                    minLines: 2,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: 'wins',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('What felt hard?'),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: missesController,
+                    minLines: 2,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: 'misses',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('What matters next week?'),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: nextFocusController,
+                    minLines: 2,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: 'next focus',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('later'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                await controller.markWeeklyReviewDone(
+                  wins: winsController.text,
+                  misses: missesController.text,
+                  nextFocus: nextFocusController.text,
+                );
+                if (context.mounted) Navigator.of(context).pop();
+              },
+              child: const Text('save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TerminalPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const TerminalHeader('weekly review', comment: 'Sunday check-in'),
+          const SizedBox(height: 8),
+          const Text(
+            '3 quick prompts for a calmer week ahead.',
+            style: TextStyle(
+              color: AppTheme.textHigh,
+              fontSize: 12.5,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FilledButton.icon(
+              onPressed: () => _openReviewSheet(context),
+              icon: const Icon(Icons.refresh_outlined, size: 16),
+              label: const Text('review'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _StatusBlock extends StatelessWidget {
   const _StatusBlock({required this.controller});
   final MotivationController controller;
@@ -192,60 +331,84 @@ class _StatusBlock extends StatelessWidget {
     final todays = controller.todaysQuests;
     final done = todays.where((o) => o.isCompleted).length;
     final overview = controller.overviewStats(window: DataWindow.d30);
+    final greeting = controller.greetingFor(today);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const TerminalHeader('status'),
         const SizedBox(height: 10),
+        Text(
+          greeting,
+          style: const TextStyle(
+            fontFamilyFallback: AppTheme.mono,
+            color: AppTheme.amberBright,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
         Row(
           children: [
-            const Icon(Icons.calendar_today_outlined, size: 12, color: AppTheme.textMid),
+            const Icon(
+              Icons.calendar_today_outlined,
+              size: 12,
+              color: AppTheme.textMid,
+            ),
             const SizedBox(width: 6),
             Expanded(
-              child: Text(longDate(today),
-                  style: const TextStyle(
-                      fontFamilyFallback: AppTheme.mono,
-                      color: AppTheme.textHigh,
-                      fontSize: 11.5)),
+              child: Text(
+                longDate(today),
+                style: const TextStyle(
+                  fontFamilyFallback: AppTheme.mono,
+                  color: AppTheme.textHigh,
+                  fontSize: 11.5,
+                ),
+              ),
             ),
           ],
         ),
         const SizedBox(height: 8),
         Row(
           children: [
-            const Icon(Icons.local_fire_department, size: 13, color: AppTheme.streakAccent),
-            Text(' ${overview.goalStreak.current} days',
-                style: const TextStyle(
-                    fontFamilyFallback: AppTheme.mono,
-                    color: AppTheme.textHigh,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600)),
-            const SizedBox(width: 8),
-            const Text('*', style: TextStyle(color: AppTheme.textLow)),
-            const SizedBox(width: 8),
-            const Icon(Icons.shield_outlined, size: 13, color: AppTheme.textMid),
-            Text(' ${controller.rewards.where((r) => r.isUnlocked(progress.level)).length}',
-                style: const TextStyle(
-                    fontFamilyFallback: AppTheme.mono, color: AppTheme.textHigh, fontSize: 12)),
+            const Icon(
+              Icons.local_fire_department,
+              size: 13,
+              color: AppTheme.streakAccent,
+            ),
+            Text(
+              ' ${overview.goalStreak.current} days',
+              style: const TextStyle(
+                fontFamilyFallback: AppTheme.mono,
+                color: AppTheme.textHigh,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 10),
         BarProgress(
           fraction: todays.isEmpty ? 0 : done / todays.length,
-          label: '${todays.isEmpty ? 0 : (done / todays.length * 100).round()}% '
+          label:
+              '${todays.isEmpty ? 0 : (done / todays.length * 100).round()}% '
               '[$done/${todays.length}]',
         ),
         const SizedBox(height: 4),
-        Text('// goal: ${controller.dailyGoalPercent}%',
-            style: AppTheme.comment.copyWith(fontSize: 11)),
+        Text(
+          '// goal: ${controller.dailyGoalPercent}%',
+          style: AppTheme.comment.copyWith(fontSize: 11),
+        ),
         const SizedBox(height: 10),
-        Text('level: ${progress.level} [${progress.xpToNextLevel}xp to next]',
-            style: const TextStyle(
-                fontFamilyFallback: AppTheme.mono,
-                color: AppTheme.amberBright,
-                fontSize: 12,
-                fontWeight: FontWeight.w600)),
+        Text(
+          'level: ${progress.level} [${progress.xpToNextLevel}xp to next]',
+          style: const TextStyle(
+            fontFamilyFallback: AppTheme.mono,
+            color: AppTheme.amberBright,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
@@ -268,24 +431,37 @@ class _CompactStatus extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(greetingFor(DateTime.now()),
-                  style: const TextStyle(
-                      fontFamilyFallback: AppTheme.mono,
-                      color: AppTheme.textHigh,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700)),
+              Text(
+                greetingFor(DateTime.now()),
+                style: const TextStyle(
+                  fontFamilyFallback: AppTheme.mono,
+                  color: AppTheme.textHigh,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               const Spacer(),
-              Icon(Icons.local_fire_department,
-                  size: 14, color: overview.goalStreak.current > 0
-                      ? AppTheme.streakAccent
-                      : AppTheme.textLow),
-              Text(' ${overview.goalStreak.current}d',
-                  style: const TextStyle(fontFamilyFallback: AppTheme.mono, fontSize: 12)),
+              Icon(
+                Icons.local_fire_department,
+                size: 14,
+                color: overview.goalStreak.current > 0
+                    ? AppTheme.streakAccent
+                    : AppTheme.textLow,
+              ),
+              Text(
+                ' ${overview.goalStreak.current}d',
+                style: const TextStyle(
+                  fontFamilyFallback: AppTheme.mono,
+                  fontSize: 12,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 2),
-          Text('// ${quoteOfTheDay(DateTime.now())}',
-              style: AppTheme.comment.copyWith(fontSize: 11)),
+          Text(
+            '// ${quoteOfTheDay(DateTime.now())}',
+            style: AppTheme.comment.copyWith(fontSize: 11),
+          ),
           const SizedBox(height: 10),
           BarProgress(
             fraction: todays.isEmpty ? 0 : done / todays.length,
@@ -303,10 +479,14 @@ class _NinetyDayFocusPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final workouts = controller.weeklyCompletionCount(LifeGridIds.weeklyWorkout);
+    final workouts = controller.weeklyCompletionCount(
+      LifeGridIds.weeklyWorkout,
+    );
     final decideActs = controller.weeklyCompletionCount(LifeGridIds.decideAct);
-    final courageDone = controller.weeklyCompletionCount(LifeGridIds.courageChallenge) > 0;
-    final deepBuildDone = controller.weeklyCompletionCount(LifeGridIds.deepBuild) > 0;
+    final courageDone =
+        controller.weeklyCompletionCount(LifeGridIds.courageChallenge) > 0;
+    final deepBuildDone =
+        controller.weeklyCompletionCount(LifeGridIds.deepBuild) > 0;
     final latestWeight = controller.latestWeightEntry;
     final creativityMilestones = controller.milestonesForCategory('coding');
     final nextMilestone = creativityMilestones
@@ -325,8 +505,8 @@ class _NinetyDayFocusPanel extends StatelessWidget {
             latestWeight == null
                 ? 'no weigh-in yet'
                 : '${latestWeight.kg.toStringAsFixed(1)}kg '
-                    '(target ${ninetyDayFocus.currentTargetLowKg.round()}–'
-                    '${ninetyDayFocus.currentTargetHighKg.round()}kg)',
+                      '(target ${ninetyDayFocus.currentTargetLowKg.round()}–'
+                      '${ninetyDayFocus.currentTargetHighKg.round()}kg)',
             'workouts this week: $workouts/${ninetyDayFocus.minWorkoutsPerWeek}',
           ],
         ),
@@ -355,7 +535,11 @@ class _NinetyDayFocusPanel extends StatelessWidget {
 }
 
 class _FocusRow extends StatelessWidget {
-  const _FocusRow({required this.label, required this.icon, required this.lines});
+  const _FocusRow({
+    required this.label,
+    required this.icon,
+    required this.lines,
+  });
   final String label;
   final IconData icon;
   final List<String> lines;
@@ -371,18 +555,24 @@ class _FocusRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label,
-                  style: const TextStyle(
-                      fontFamilyFallback: AppTheme.mono,
-                      color: AppTheme.textHigh,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11.5)),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontFamilyFallback: AppTheme.mono,
+                  color: AppTheme.textHigh,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11.5,
+                ),
+              ),
               for (final line in lines)
-                Text(line,
-                    style: const TextStyle(
-                        fontFamilyFallback: AppTheme.mono,
-                        color: AppTheme.textMid,
-                        fontSize: 11)),
+                Text(
+                  line,
+                  style: const TextStyle(
+                    fontFamilyFallback: AppTheme.mono,
+                    color: AppTheme.textMid,
+                    fontSize: 11,
+                  ),
+                ),
             ],
           ),
         ),
@@ -392,7 +582,11 @@ class _FocusRow extends StatelessWidget {
 }
 
 class _WeekStrip extends StatelessWidget {
-  const _WeekStrip({required this.controller, required this.selected, required this.onSelect});
+  const _WeekStrip({
+    required this.controller,
+    required this.selected,
+    required this.onSelect,
+  });
 
   final MotivationController controller;
   final DateTime selected;
@@ -424,20 +618,26 @@ class _WeekStrip extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-                      Text(AppText.weekdayShort[day.weekday - 1],
-                          style: const TextStyle(
-                              fontFamilyFallback: AppTheme.mono,
-                              color: AppTheme.textLow,
-                              fontSize: 10)),
+                      Text(
+                        AppText.weekdayShort[day.weekday - 1],
+                        style: const TextStyle(
+                          fontFamilyFallback: AppTheme.mono,
+                          color: AppTheme.textLow,
+                          fontSize: 10,
+                        ),
+                      ),
                       const SizedBox(height: 2),
-                      Text('${day.day}',
-                          style: TextStyle(
-                              fontFamilyFallback: AppTheme.mono,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                              color: isSameDay(day, selected)
-                                  ? AppTheme.amberBright
-                                  : AppTheme.textHigh)),
+                      Text(
+                        '${day.day}',
+                        style: TextStyle(
+                          fontFamilyFallback: AppTheme.mono,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          color: isSameDay(day, selected)
+                              ? AppTheme.amberBright
+                              : AppTheme.textHigh,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -486,14 +686,20 @@ class _CenterColumn extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 32),
             child: Center(
               child: Text(
-                isPast ? 'nothing was scheduled that day.' : AppText.noQuestsToday,
+                isPast
+                    ? 'nothing was scheduled that day.'
+                    : AppText.noQuestsToday,
                 style: const TextStyle(color: AppTheme.textMid),
               ),
             ),
           )
         else
           for (final entry in grouped)
-            _SectionBlock(controller: controller, section: entry.key, occurrences: entry.value),
+            _SectionBlock(
+              controller: controller,
+              section: entry.key,
+              occurrences: entry.value,
+            ),
       ],
     );
 
@@ -510,16 +716,27 @@ class _CenterColumn extends StatelessWidget {
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   onPressed: () => onShiftDay(-1),
-                  icon: const Icon(Icons.chevron_left, size: 18, color: AppTheme.textMid),
+                  icon: const Icon(
+                    Icons.chevron_left,
+                    size: 18,
+                    color: AppTheme.textMid,
+                  ),
                 ),
                 Text(
                   isToday ? 'today' : '${date.day}/${date.month}',
-                  style: const TextStyle(fontFamilyFallback: AppTheme.mono, fontSize: 12),
+                  style: const TextStyle(
+                    fontFamilyFallback: AppTheme.mono,
+                    fontSize: 12,
+                  ),
                 ),
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   onPressed: () => onShiftDay(1),
-                  icon: const Icon(Icons.chevron_right, size: 18, color: AppTheme.textMid),
+                  icon: const Icon(
+                    Icons.chevron_right,
+                    size: 18,
+                    color: AppTheme.textMid,
+                  ),
                 ),
               ],
             ),
@@ -533,20 +750,26 @@ class _CenterColumn extends StatelessWidget {
             Row(
               children: [
                 TextButton.icon(
-                  onPressed: () => showTaskEditorSheet(context, controller, date: date),
+                  onPressed: () =>
+                      showTaskEditorSheet(context, controller, date: date),
                   icon: const Icon(Icons.add, size: 15),
                   label: const Text('+ habit'),
                 ),
                 const SizedBox(width: 8),
                 TextButton.icon(
-                  onPressed: () => showTaskEditorSheet(context, controller,
-                      date: date, startAsRecurring: true),
+                  onPressed: () => showTaskEditorSheet(
+                    context,
+                    controller,
+                    date: date,
+                    startAsRecurring: true,
+                  ),
                   icon: const Icon(Icons.autorenew, size: 15),
                   label: const Text('+ routine'),
                 ),
                 const Spacer(),
                 TextButton(
-                  onPressed: () => showAttachTaskSheet(context, controller, date),
+                  onPressed: () =>
+                      showAttachTaskSheet(context, controller, date),
                   child: const Text('attach existing'),
                 ),
               ],
@@ -589,23 +812,35 @@ class _SectionBlockState extends State<_SectionBlock> {
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
                 children: [
-                  Text(sectionEmojiOrDot(widget.section), style: const TextStyle(fontSize: 13)),
+                  Text(
+                    sectionEmojiOrDot(widget.section),
+                    style: const TextStyle(fontSize: 13),
+                  ),
                   const SizedBox(width: 6),
-                  Text(widget.section,
-                      style: const TextStyle(
-                          fontFamilyFallback: AppTheme.mono,
-                          color: AppTheme.textHigh,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12.5)),
+                  Text(
+                    widget.section,
+                    style: const TextStyle(
+                      fontFamilyFallback: AppTheme.mono,
+                      color: AppTheme.textHigh,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
+                    ),
+                  ),
                   const SizedBox(width: 6),
-                  Text('[$done/${widget.occurrences.length}]',
-                      style: const TextStyle(
-                          fontFamilyFallback: AppTheme.mono,
-                          color: AppTheme.textLow,
-                          fontSize: 11.5)),
+                  Text(
+                    '[$done/${widget.occurrences.length}]',
+                    style: const TextStyle(
+                      fontFamilyFallback: AppTheme.mono,
+                      color: AppTheme.textLow,
+                      fontSize: 11.5,
+                    ),
+                  ),
                   const Spacer(),
-                  Icon(_expanded ? Icons.expand_less : Icons.expand_more,
-                      size: 16, color: AppTheme.textLow),
+                  Icon(
+                    _expanded ? Icons.expand_less : Icons.expand_more,
+                    size: 16,
+                    color: AppTheme.textLow,
+                  ),
                 ],
               ),
             ),
@@ -669,7 +904,11 @@ class _RightColumnState extends State<_RightColumn> {
                   : IconButton(
                       visualDensity: VisualDensity.compact,
                       onPressed: widget.onClose,
-                      icon: const Icon(Icons.close, size: 16, color: AppTheme.textLow),
+                      icon: const Icon(
+                        Icons.close,
+                        size: 16,
+                        color: AppTheme.textLow,
+                      ),
                     ),
             ),
             const SizedBox(height: 14),
@@ -678,7 +917,10 @@ class _RightColumnState extends State<_RightColumn> {
               comment: 'your overall tracking summary',
               rows: [
                 ('days tracked', '${overview.daysTracked} days'),
-                ('avg completion', '${(overview.avgCompletion * 100).round()}%'),
+                (
+                  'avg completion',
+                  '${(overview.avgCompletion * 100).round()}%',
+                ),
                 ('daily goal met', '${overview.dailyGoalMetDays} days'),
                 ('total completions', '${overview.totalCompletions}'),
               ],
@@ -690,20 +932,29 @@ class _RightColumnState extends State<_RightColumn> {
                 ('current streak', '${overview.goalStreak.current} days'),
                 ('best streak', '${overview.goalStreak.best} days'),
                 if (overview.topHabitTitle != null)
-                  ('top habit streak',
-                      '${overview.topHabitTitle} — ${overview.topHabitStreak} days'),
+                  (
+                    'top habit streak',
+                    '${overview.topHabitTitle} — ${overview.topHabitStreak} days',
+                  ),
               ],
             ),
             Text('data window', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 3),
-            Text('// choose a preset, or pick a custom range',
-                style: AppTheme.comment.copyWith(fontSize: 11)),
+            Text(
+              '// choose a preset, or pick a custom range',
+              style: AppTheme.comment.copyWith(fontSize: 11),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 6,
               runSpacing: 6,
               children: [
-                for (final w in [DataWindow.d7, DataWindow.d30, DataWindow.d90, DataWindow.all])
+                for (final w in [
+                  DataWindow.d7,
+                  DataWindow.d30,
+                  DataWindow.d90,
+                  DataWindow.all,
+                ])
                   _WindowChip(
                     label: w.label,
                     selected: window == w,
@@ -716,17 +967,27 @@ class _RightColumnState extends State<_RightColumn> {
               title: 'completion rates [${window.label}]',
               comment: 'how often you complete scheduled habits',
               rows: [
-                ('this period', '${(overview.thisWindowCompletion * 100).round()}%'),
-                ('perfect days',
-                    '${overview.perfectDays}/${overview.totalDaysInWindow}'),
+                (
+                  'this period',
+                  '${(overview.thisWindowCompletion * 100).round()}%',
+                ),
+                (
+                  'perfect days',
+                  '${overview.perfectDays}/${overview.totalDaysInWindow}',
+                ),
                 ('weekday avg', '${(overview.weekdayAvg * 100).round()}%'),
                 ('weekend avg', '${(overview.weekendAvg * 100).round()}%'),
               ],
             ),
-            Text('day of week [${window.label}]', style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'day of week [${window.label}]',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: 3),
-            Text('// completion rates broken down by day',
-                style: AppTheme.comment.copyWith(fontSize: 11)),
+            Text(
+              '// completion rates broken down by day',
+              style: AppTheme.comment.copyWith(fontSize: 11),
+            ),
             const SizedBox(height: 8),
             for (var i = 0; i < 7; i++)
               Padding(
@@ -735,11 +996,14 @@ class _RightColumnState extends State<_RightColumn> {
                   children: [
                     SizedBox(
                       width: 28,
-                      child: Text(AppText.weekdayShort[i].toLowerCase(),
-                          style: const TextStyle(
-                              fontFamilyFallback: AppTheme.mono,
-                              color: AppTheme.textMid,
-                              fontSize: 11)),
+                      child: Text(
+                        AppText.weekdayShort[i].toLowerCase(),
+                        style: const TextStyle(
+                          fontFamilyFallback: AppTheme.mono,
+                          color: AppTheme.textMid,
+                          fontSize: 11,
+                        ),
+                      ),
                     ),
                     Expanded(
                       child: BarProgress(
@@ -753,7 +1017,8 @@ class _RightColumnState extends State<_RightColumn> {
                   ],
                 ),
               ),
-            if (overview.bestWeekday != null && overview.worstWeekday != null) ...[
+            if (overview.bestWeekday != null &&
+                overview.worstWeekday != null) ...[
               const SizedBox(height: 6),
               Text(
                 'best day: ${AppText.weekdayShort[overview.bestWeekday!].toLowerCase()} '
@@ -771,7 +1036,11 @@ class _RightColumnState extends State<_RightColumn> {
 }
 
 class _WindowChip extends StatelessWidget {
-  const _WindowChip({required this.label, required this.selected, required this.onTap});
+  const _WindowChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -784,22 +1053,33 @@ class _WindowChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.amber.withValues(alpha: 0.18) : AppTheme.cardInset,
-          border: Border.all(color: selected ? AppTheme.amber : AppTheme.border),
+          color: selected
+              ? AppTheme.amber.withValues(alpha: 0.18)
+              : AppTheme.cardInset,
+          border: Border.all(
+            color: selected ? AppTheme.amber : AppTheme.border,
+          ),
           borderRadius: BorderRadius.circular(5),
         ),
-        child: Text('[$label]',
-            style: TextStyle(
-                fontFamilyFallback: AppTheme.mono,
-                fontSize: 11,
-                color: selected ? AppTheme.amberBright : AppTheme.textMid)),
+        child: Text(
+          '[$label]',
+          style: TextStyle(
+            fontFamilyFallback: AppTheme.mono,
+            fontSize: 11,
+            color: selected ? AppTheme.amberBright : AppTheme.textMid,
+          ),
+        ),
       ),
     );
   }
 }
 
 class _StatSection extends StatelessWidget {
-  const _StatSection({required this.title, required this.comment, required this.rows});
+  const _StatSection({
+    required this.title,
+    required this.comment,
+    required this.rows,
+  });
 
   final String title;
   final String comment;
@@ -821,18 +1101,24 @@ class _StatSection extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Row(
                 children: [
-                  Text('$label: ',
-                      style: const TextStyle(
-                          fontFamilyFallback: AppTheme.mono,
-                          color: AppTheme.textMid,
-                          fontSize: 12)),
+                  Text(
+                    '$label: ',
+                    style: const TextStyle(
+                      fontFamilyFallback: AppTheme.mono,
+                      color: AppTheme.textMid,
+                      fontSize: 12,
+                    ),
+                  ),
                   Expanded(
-                    child: Text(value,
-                        style: const TextStyle(
-                            fontFamilyFallback: AppTheme.mono,
-                            color: AppTheme.textHigh,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600)),
+                    child: Text(
+                      value,
+                      style: const TextStyle(
+                        fontFamilyFallback: AppTheme.mono,
+                        color: AppTheme.textHigh,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ],
               ),

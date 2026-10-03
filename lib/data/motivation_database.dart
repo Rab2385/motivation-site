@@ -3,7 +3,6 @@ import 'package:sembast/sembast.dart';
 
 import '../models/milestone.dart';
 import '../models/proposal.dart';
-import '../models/reward.dart';
 import '../models/task_category.dart';
 import '../models/task_definition.dart';
 import '../models/task_occurrence.dart';
@@ -19,7 +18,6 @@ class DatabaseSnapshot {
     required this.occurrences,
     required this.templates,
     required this.proposals,
-    required this.rewards,
     required this.milestones,
     required this.weightEntries,
     required this.achievementUnlocks,
@@ -32,7 +30,6 @@ class DatabaseSnapshot {
   final List<TaskOccurrence> occurrences;
   final List<WeekTemplate> templates;
   final List<Proposal> proposals;
-  final List<Reward> rewards;
   final List<Milestone> milestones;
   final List<WeightEntry> weightEntries;
 
@@ -61,7 +58,6 @@ class MotivationDatabase {
   final _occurrences = stringMapStoreFactory.store('occurrences');
   final _templates = stringMapStoreFactory.store('week_templates');
   final _proposals = stringMapStoreFactory.store('proposals');
-  final _rewards = stringMapStoreFactory.store('rewards');
   final _milestones = stringMapStoreFactory.store('milestones');
   final _weightEntries = stringMapStoreFactory.store('weight_entries');
   final _achievements = stringMapStoreFactory.store('achievement_unlocks');
@@ -79,42 +75,41 @@ class MotivationDatabase {
   Future<DatabaseSnapshot> loadAll() async {
     final db = await _db;
 
-    final categories = (await _categories.find(db))
-        .map((r) => TaskCategory.fromMap(r.value))
-        .toList()
-      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    final categories =
+        (await _categories.find(
+            db,
+          )).map((r) => TaskCategory.fromMap(r.value)).toList()
+          ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
-    final definitions = (await _definitions.find(db))
-        .map((r) => TaskDefinition.fromMap(r.value))
-        .toList();
+    final definitions = (await _definitions.find(
+      db,
+    )).map((r) => TaskDefinition.fromMap(r.value)).toList();
 
-    final occurrences = (await _occurrences.find(db))
-        .map((r) => TaskOccurrence.fromMap(r.value))
-        .toList();
+    final occurrences = (await _occurrences.find(
+      db,
+    )).map((r) => TaskOccurrence.fromMap(r.value)).toList();
 
-    final templates = (await _templates.find(db))
-        .map((r) => WeekTemplate.fromMap(r.value))
-        .toList()
-      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    final templates =
+        (await _templates.find(
+            db,
+          )).map((r) => WeekTemplate.fromMap(r.value)).toList()
+          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-    final proposals = (await _proposals.find(db))
-        .map((r) => Proposal.fromMap(r.value))
-        .toList();
+    final proposals = (await _proposals.find(
+      db,
+    )).map((r) => Proposal.fromMap(r.value)).toList();
 
-    final rewards = (await _rewards.find(db))
-        .map((r) => Reward.fromMap(r.value))
-        .toList()
-      ..sort((a, b) => a.requiredLevel.compareTo(b.requiredLevel));
+    final milestones =
+        (await _milestones.find(
+            db,
+          )).map((r) => Milestone.fromMap(r.value)).toList()
+          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-    final milestones = (await _milestones.find(db))
-        .map((r) => Milestone.fromMap(r.value))
-        .toList()
-      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-
-    final weightEntries = (await _weightEntries.find(db))
-        .map((r) => WeightEntry.fromMap(r.value))
-        .toList()
-      ..sort((a, b) => a.date.compareTo(b.date));
+    final weightEntries =
+        (await _weightEntries.find(
+            db,
+          )).map((r) => WeightEntry.fromMap(r.value)).toList()
+          ..sort((a, b) => a.date.compareTo(b.date));
 
     final achievementUnlocks = <String, DateTime>{};
     for (final record in await _achievements.find(db)) {
@@ -135,7 +130,6 @@ class MotivationDatabase {
       occurrences: occurrences,
       templates: templates,
       proposals: proposals,
-      rewards: rewards,
       milestones: milestones,
       weightEntries: weightEntries,
       achievementUnlocks: achievementUnlocks,
@@ -143,14 +137,6 @@ class MotivationDatabase {
       meta: meta,
     );
   }
-
-  // ---- Rewards ------------------------------------------------------
-
-  Future<void> saveReward(Reward reward) async =>
-      _rewards.record(reward.id).put(await _db, reward.toMap());
-
-  Future<void> deleteReward(String id) async =>
-      _rewards.record(id).delete(await _db);
 
   // ---- Categories ---------------------------------------------------------
 
@@ -232,11 +218,28 @@ class MotivationDatabase {
 
   // ---- Settings / meta ------------------------------------------------------
 
-  Future<void> saveSetting(String key, Object? value) async =>
-      _settings.record(key).put(await _db, value);
+  Future<void> saveSetting(String key, Object? value) async {
+    final db = await _db;
+    if (value == null) {
+      await _settings.record(key).delete(db);
+      return;
+    }
+    await _settings.record(key).put(db, value);
+  }
 
-  Future<void> saveMeta(String key, Object? value) async =>
-      _meta.record(key).put(await _db, value);
+  Future<Object?> loadSetting(String key) async {
+    final db = await _db;
+    return _settings.record(key).get(db);
+  }
+
+  Future<void> saveMeta(String key, Object? value) async {
+    final db = await _db;
+    if (value == null) {
+      await _meta.record(key).delete(db);
+      return;
+    }
+    await _meta.record(key).put(db, value);
+  }
 
   // ---- Backup ------------------------------------------------------
 
@@ -244,8 +247,7 @@ class MotivationDatabase {
     final db = await _db;
     Future<List<Map<String, Object?>>> dump(
       StoreRef<String, Map<String, Object?>> store,
-    ) async =>
-        (await store.find(db)).map((r) => r.value).toList();
+    ) async => (await store.find(db)).map((r) => r.value).toList();
 
     return {
       'categories': await dump(_categories),
@@ -253,18 +255,13 @@ class MotivationDatabase {
       'occurrences': await dump(_occurrences),
       'week_templates': await dump(_templates),
       'proposals': await dump(_proposals),
-      'rewards': await dump(_rewards),
       'milestones': await dump(_milestones),
       'weight_entries': await dump(_weightEntries),
       'achievement_unlocks': {
         for (final r in await _achievements.find(db)) r.key: r.value,
       },
-      'settings': {
-        for (final r in await _settings.find(db)) r.key: r.value,
-      },
-      'meta': {
-        for (final r in await _meta.find(db)) r.key: r.value,
-      },
+      'settings': {for (final r in await _settings.find(db)) r.key: r.value},
+      'meta': {for (final r in await _meta.find(db)) r.key: r.value},
     };
   }
 
@@ -276,7 +273,6 @@ class MotivationDatabase {
       await _occurrences.delete(txn);
       await _templates.delete(txn);
       await _proposals.delete(txn);
-      await _rewards.delete(txn);
       await _milestones.delete(txn);
       await _weightEntries.delete(txn);
       await _achievements.delete(txn);
@@ -299,7 +295,6 @@ class MotivationDatabase {
       await restoreList(_occurrences, data['occurrences'], 'id');
       await restoreList(_templates, data['week_templates'], 'id');
       await restoreList(_proposals, data['proposals'], 'id');
-      await restoreList(_rewards, data['rewards'], 'id');
       await restoreList(_milestones, data['milestones'], 'id');
       await restoreList(_weightEntries, data['weight_entries'], 'id');
 
@@ -326,7 +321,6 @@ class MotivationDatabase {
       await _occurrences.delete(txn);
       await _templates.delete(txn);
       await _proposals.delete(txn);
-      await _rewards.delete(txn);
       await _milestones.delete(txn);
       await _weightEntries.delete(txn);
       await _achievements.delete(txn);

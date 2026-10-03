@@ -10,7 +10,6 @@ import '../models/completion.dart';
 import '../models/milestone.dart';
 import '../models/proposal.dart';
 import '../models/recurrence_rule.dart';
-import '../models/reward.dart';
 import '../models/task_category.dart';
 import '../models/task_definition.dart';
 import '../models/task_occurrence.dart';
@@ -50,18 +49,16 @@ class PlanService {
     required List<TaskOccurrence> occurrences,
     required List<WeekTemplate> templates,
     required List<Proposal> proposals,
-    required List<Reward> rewards,
     required List<Milestone> milestones,
     required List<WeightEntry> weightEntries,
-  })  : _db = database,
-        _categories = categories,
-        _definitions = definitions,
-        _occurrences = occurrences,
-        _templates = templates,
-        _proposals = proposals,
-        _rewards = rewards,
-        _milestones = milestones,
-        _weightEntries = weightEntries;
+  }) : _db = database,
+       _categories = categories,
+       _definitions = definitions,
+       _occurrences = occurrences,
+       _templates = templates,
+       _proposals = proposals,
+       _milestones = milestones,
+       _weightEntries = weightEntries;
 
   final MotivationDatabase _db;
 
@@ -72,7 +69,6 @@ class PlanService {
   final List<TaskOccurrence> _occurrences;
   final List<WeekTemplate> _templates;
   final List<Proposal> _proposals;
-  final List<Reward> _rewards;
   final List<Milestone> _milestones;
   final List<WeightEntry> _weightEntries;
 
@@ -197,16 +193,34 @@ class PlanService {
   }
 
   Future<void> deleteDefinition(String definitionId) async {
-    _definitions.removeWhere((d) => d.id == definitionId);
-    await _db.deleteDefinition(definitionId);
+    final target = _definitions.where((d) => d.id == definitionId).firstOrNull;
+    final targetTitle = target?.title.trim().toLowerCase();
+    final idsToDelete = _definitions
+        .where(
+          (d) =>
+              d.id == definitionId ||
+              (targetTitle != null &&
+                  d.title.trim().toLowerCase() == targetTitle),
+        )
+        .map((d) => d.id)
+        .toSet();
+
+    if (idsToDelete.isEmpty) return;
+
+    for (final id in idsToDelete) {
+      _definitions.removeWhere((d) => d.id == id);
+      await _db.deleteDefinition(id);
+    }
 
     // Drop its future, untouched occurrences; keep history (completed / past).
     final today = dateOnly(_now());
     final removable = _occurrences
-        .where((o) =>
-            o.sourceDefinitionId == definitionId &&
-            !o.isCompleted &&
-            !o.date.isBefore(today))
+        .where(
+          (o) =>
+              idsToDelete.contains(o.sourceDefinitionId) &&
+              !o.isCompleted &&
+              !o.date.isBefore(today),
+        )
         .map((o) => o.id)
         .toList();
     await _removeOccurrences(removable);
@@ -222,8 +236,9 @@ class PlanService {
     required DateTime date,
     required AttachScope scope,
   }) async {
-    final definition =
-        _definitions.where((d) => d.id == definitionId).firstOrNull;
+    final definition = _definitions
+        .where((d) => d.id == definitionId)
+        .firstOrNull;
     if (definition == null) return;
 
     if (definition.recurrence.kind == RecurrenceKind.timesPerWeek) {
@@ -234,8 +249,10 @@ class PlanService {
     if (scope == AttachScope.everyWeekdayFromNow) {
       await editDefinition(
         definitionId,
-        recurrence: definition.recurrence
-            .withWeekday(date.weekday, present: true),
+        recurrence: definition.recurrence.withWeekday(
+          date.weekday,
+          present: true,
+        ),
       );
       return;
     }
@@ -265,8 +282,9 @@ class PlanService {
     required String definitionId,
     required DateTime date,
   }) async {
-    final definition =
-        _definitions.where((d) => d.id == definitionId).firstOrNull;
+    final definition = _definitions
+        .where((d) => d.id == definitionId)
+        .firstOrNull;
     if (definition == null) return;
     final now = _now();
     final occurrence = TaskOccurrence(
@@ -343,8 +361,9 @@ class PlanService {
   /// Delete from the planner. A scheduled recurring occurrence becomes a
   /// streak-neutral skip; everything else is removed outright.
   Future<void> removeOccurrence(String occurrenceId) async {
-    final occurrence =
-        _occurrences.where((o) => o.id == occurrenceId).firstOrNull;
+    final occurrence = _occurrences
+        .where((o) => o.id == occurrenceId)
+        .firstOrNull;
     if (occurrence == null) return;
 
     if (_isScheduledRecurring(occurrence)) {
@@ -387,8 +406,7 @@ class PlanService {
     String occurrenceId,
     DateTime toDate,
   ) async {
-    final source =
-        _occurrences.where((o) => o.id == occurrenceId).firstOrNull;
+    final source = _occurrences.where((o) => o.id == occurrenceId).firstOrNull;
     if (source == null) {
       throw StateError('Occurrence $occurrenceId not found');
     }
@@ -420,8 +438,9 @@ class PlanService {
 
     final updated = occurrence.copyWith(
       isSkipped: false,
-      loggedAmount:
-          occurrence.hasTarget ? occurrence.target!.amount : occurrence.loggedAmount,
+      loggedAmount: occurrence.hasTarget
+          ? occurrence.target!.amount
+          : occurrence.loggedAmount,
       completion: Completion(
         completedAt: _now(),
         awardedXp: awardedXp,
@@ -510,14 +529,16 @@ class PlanService {
       if (occurrence.isSkipped) continue;
       final date = occurrence.date;
       if (date.isBefore(monday) || date.isAfter(sunday)) continue;
-      entries.add(WeekTemplateEntry(
-        weekday: date.weekday,
-        title: occurrence.title,
-        note: occurrence.note,
-        categoryId: occurrence.categoryId,
-        difficulty: occurrence.difficulty,
-        xp: occurrence.xp,
-      ));
+      entries.add(
+        WeekTemplateEntry(
+          weekday: date.weekday,
+          title: occurrence.title,
+          note: occurrence.note,
+          categoryId: occurrence.categoryId,
+          difficulty: occurrence.difficulty,
+          xp: occurrence.xp,
+        ),
+      );
     }
     final template = WeekTemplate(
       id: newId('tpl'),
@@ -539,8 +560,7 @@ class PlanService {
     required String templateId,
     required DateTime weekStartDate,
   }) async {
-    final template =
-        _templates.where((t) => t.id == templateId).firstOrNull;
+    final template = _templates.where((t) => t.id == templateId).firstOrNull;
     if (template == null) {
       return const TemplateApplyResult(added: 0, skipped: 0);
     }
@@ -551,11 +571,13 @@ class PlanService {
     for (final entry in template.entries) {
       final targetDate = monday.add(Duration(days: entry.weekday - 1));
       final key = dayKey(targetDate);
-      final duplicate = _occurrences.any((o) =>
-          o.dateKey == key &&
-          !o.isSkipped &&
-          o.categoryId == entry.categoryId &&
-          normaliseTitle(o.title) == normaliseTitle(entry.title));
+      final duplicate = _occurrences.any(
+        (o) =>
+            o.dateKey == key &&
+            !o.isSkipped &&
+            o.categoryId == entry.categoryId &&
+            normaliseTitle(o.title) == normaliseTitle(entry.title),
+      );
       if (duplicate) {
         skipped++;
         continue;
@@ -620,66 +642,6 @@ class PlanService {
   Future<void> deleteCategory(String id) async {
     _categories.removeWhere((c) => c.id == id);
     await _db.deleteCategory(id);
-  }
-
-  // ---- Rewards ------------------------------------------------------
-
-  Future<void> addReward({
-    required String title,
-    required String description,
-    required String iconKey,
-    required int requiredLevel,
-  }) async {
-    final reward = Reward(
-      id: newId('rew'),
-      title: title.trim(),
-      description: description.trim(),
-      iconKey: iconKey,
-      requiredLevel: requiredLevel < 1 ? 1 : requiredLevel,
-      createdAt: _now(),
-    );
-    _rewards.add(reward);
-    await _db.saveReward(reward);
-  }
-
-  Future<void> updateReward(
-    String id, {
-    String? title,
-    String? description,
-    String? iconKey,
-    int? requiredLevel,
-  }) async {
-    final index = _rewards.indexWhere((r) => r.id == id);
-    if (index == -1) return;
-    final updated = _rewards[index].copyWith(
-      title: title?.trim(),
-      description: description?.trim(),
-      iconKey: iconKey,
-      requiredLevel: requiredLevel,
-    );
-    _rewards[index] = updated;
-    await _db.saveReward(updated);
-  }
-
-  Future<void> deleteReward(String id) async {
-    _rewards.removeWhere((r) => r.id == id);
-    await _db.deleteReward(id);
-  }
-
-  /// Records that the user redeemed [id]. Allowed only when the reward is
-  /// unlocked at [currentLevel]. There is no XP cost.
-  Future<bool> redeemReward(String id, int currentLevel) async {
-    final index = _rewards.indexWhere((r) => r.id == id);
-    if (index == -1) return false;
-    final reward = _rewards[index];
-    if (!reward.isUnlocked(currentLevel)) return false;
-    final updated = reward.copyWith(
-      redeemedCount: reward.redeemedCount + 1,
-      lastRedeemedAt: _now(),
-    );
-    _rewards[index] = updated;
-    await _db.saveReward(updated);
-    return true;
   }
 
   // ---- Milestones (Life Grid) ------------------------------------------------
@@ -749,7 +711,8 @@ class PlanService {
     if (index == -1) return;
     final milestone = _milestones[index];
 
-    if (status == GoalStatus.achieved && milestone.status != GoalStatus.achieved) {
+    if (status == GoalStatus.achieved &&
+        milestone.status != GoalStatus.achieved) {
       final occurrence = await addOneOff(
         date: _now(),
         title: milestone.title,
@@ -805,8 +768,9 @@ class PlanService {
   Future<void> rejectProposal(String proposalId) async {
     final index = _proposals.indexWhere((p) => p.id == proposalId);
     if (index == -1) return;
-    _proposals[index] =
-        _proposals[index].copyWith(status: ProposalStatus.rejected);
+    _proposals[index] = _proposals[index].copyWith(
+      status: ProposalStatus.rejected,
+    );
     await _db.saveProposal(_proposals[index]);
   }
 
@@ -846,8 +810,9 @@ class PlanService {
           op.occurrenceId!,
           title: payload.containsKey('title') ? str('title') : null,
           note: payload.containsKey('note') ? str('note') : null,
-          categoryId:
-              payload.containsKey('categoryId') ? str('categoryId') : null,
+          categoryId: payload.containsKey('categoryId')
+              ? str('categoryId')
+              : null,
           xp: payload.containsKey('xp') ? intOf('xp') : null,
         );
       case PlanOperationKind.moveOccurrence:

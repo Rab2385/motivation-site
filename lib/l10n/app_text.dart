@@ -10,11 +10,11 @@ class AppText {
   static const today = 'today';
   static const weekPlanning = 'planner';
   static const habits = 'habits';
-  static const rewards = 'rewards';
   static const statistics = 'stats';
   static const achievements = 'achievements';
   static const settings = 'system';
   static const profile = 'profile';
+  static const lifeGrid = 'life grid';
   static const help = 'help';
 
   // Shared actions
@@ -36,7 +36,13 @@ class AppText {
   static const quests = 'habits';
   static const newOneOff = 'New task';
   static const newRecurring = 'New habit';
-  static const attachExisting = 'Attach existing habit';
+  static const attachExisting = 'Reuse existing habit';
+  static const searchHabits = 'Search habits';
+  static const all = 'All';
+  static const morning = 'Morning';
+  static const afternoon = 'Afternoon';
+  static const night = 'Night';
+  static const general = 'General';
   static const title = 'Title';
   static const note = 'Note';
   static const section = 'Section';
@@ -72,11 +78,13 @@ class AppText {
   static const repeat = 'Repeats';
   static const fixedWeekdays = 'Fixed weekdays';
   static const timesPerWeek = 'X times a week';
+  static const monthly = 'Monthly';
+  static const dayOfMonth = 'Day of month';
   static const everyWeek = 'Every week';
   static const justThisWeek = 'Just this week';
-  static const attachScopeQuestion = 'How often?';
-  static const attachOnce = 'Just this day';
-  static const attachEvery = 'Every ';
+  static const attachScopeQuestion = 'How should this be added?';
+  static const attachOnce = 'Add once';
+  static const attachEvery = 'Repeat from now on';
 
   // Planner (formerly Wochenplanung)
   static const thisWeek = 'This week';
@@ -90,6 +98,8 @@ class AppText {
   static const templates = 'Templates';
   static const saveAsTemplate = 'Save as template';
   static const applyTemplate = 'Apply template';
+  static const setAsDefaultWeek = 'Set as standard week';
+  static const useDefaultWeek = 'Use standard week';
   static const templateName = 'Template name';
 
   // Habits list
@@ -120,21 +130,9 @@ class AppText {
   static const collectedXp = 'xp';
   static const longestStreak = 'best streak';
 
-  // Rewards
-  static const unlockedRewards = 'unlocked rewards';
-  static const allRewards = 'all rewards';
-  static const redeem = 'Redeem';
-  static const rewardUnlockedYou = "You've unlocked this reward!";
-  static const unlockAtLevel = 'Unlocks at level ';
-  static const newReward = 'New reward';
-  static const requiredLevel = 'Required level';
-  static const redeemedTimes = ' redeemed';
-  static const rewardRedeemed = 'Reward redeemed';
-  static const enjoyIt = "Enjoy it — you've earned it.";
-
   // Dashboard – misc
-  static const dashboardSubline = 'a bad day with habits beats a good day without them';
-  static const unlockedRewardsChip = ' rewards unlocked';
+  static const dashboardSubline =
+      'a bad day with habits beats a good day without them';
   static const daysStreak = ' day streak';
   static const tasksDoneShort = ' done';
 
@@ -142,7 +140,8 @@ class AppText {
   static const addTask = 'add task';
   static const tasksDoneOf = ' done';
   static const xpPossible = ' xp possible';
-  static const notPerfectJustConsistent = "the checkbox doesn't care if you feel like it.";
+  static const notPerfectJustConsistent =
+      "the checkbox doesn't care if you feel like it.";
   static const previousDay = 'Previous day';
   static const nextDay = 'Next day';
   static const backToToday = 'Back to today';
@@ -150,7 +149,8 @@ class AppText {
 
   // Habits management
   static const myHabits = 'habits';
-  static const habitsSubline = 'a bad day with habits is still better than a good day without them.';
+  static const habitsSubline =
+      'a bad day with habits is still better than a good day without them.';
   static const filterAll = 'all';
   static const filterDaily = 'daily';
   static const filterWeekly = 'weekly';
@@ -159,16 +159,6 @@ class AppText {
   static const daily = 'Daily';
   static const weekly = 'Weekly';
   static const once = 'One-time';
-
-  // Rewards page
-  static const rewardsSubline = 'earn yourself something that feels good.';
-  static const ownReward = 'Custom reward';
-  static const createOwnReward = 'create a reward';
-  static const filterUnlocked = 'unlocked';
-  static const filterLocked = 'locked';
-  static const unlockedLabel = 'unlocked';
-  static const levelRequired = ' required';
-  static const rewardsAreProgress = "rewards aren't a luxury — they're part of the journey.";
 
   // Stats
   static const statisticsSubline = 'progress is the sum of small efforts.';
@@ -194,16 +184,23 @@ class AppText {
   static const levelCurveLabel = 'level curve';
   static const levelCurveHint = 'how much xp the next level needs.';
   static const perfectDayBonusLabel = 'perfect day bonus';
-  static const perfectDayBonusHint = 'bonus xp when every habit is done for the day.';
+  static const perfectDayBonusHint =
+      'bonus xp when every habit is done for the day.';
   static const streakProtectionLabel = 'streak protection';
-  static const streakProtectionHint = 'a single missed day will not break your streak.';
+  static const streakProtectionHint =
+      'a single missed day will not break your streak.';
   static const dailyGoalLabel = 'daily goal';
-  static const dailyGoalHint = 'completion rate that counts as "hit your goal" for the day.';
+  static const dailyGoalHint =
+      'completion rate that counts as "hit your goal" for the day.';
+  static const weeklyReviewDayLabel = 'weekly review day';
+  static const weeklyReviewDayHint =
+      'which day should trigger your weekly reset and reflection?';
   static const notifications = 'notifications';
   static const dailyReminderLabel = 'daily reminder';
   static const dailyReminderHint = 'remind me to check my habits.';
   static const motivationMessagesLabel = 'motivational quotes';
-  static const motivationMessagesHint = 'show the // comment-style quotes around the app.';
+  static const motivationMessagesHint =
+      'show the // comment-style quotes around the app.';
   static const notificationsUnavailable =
       "note: browser notifications aren't wired up yet — the setting is saved for when they are.";
   static const showAtmosphereLabel = 'ambient background';

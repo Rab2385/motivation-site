@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 
 import '../data/motivation_database.dart';
@@ -15,7 +18,6 @@ import '../domain/workload.dart';
 import '../models/milestone.dart';
 import '../models/proposal.dart';
 import '../models/recurrence_rule.dart';
-import '../models/reward.dart';
 import '../models/task_category.dart';
 import '../models/task_definition.dart';
 import '../models/task_occurrence.dart';
@@ -39,15 +41,28 @@ class MotivationController extends ChangeNotifier {
   final List<TaskOccurrence> _occurrences = [];
   final List<WeekTemplate> _templates = [];
   final List<Proposal> _proposals = [];
-  final List<Reward> _rewards = [];
   final List<Milestone> _milestones = [];
   final List<WeightEntry> _weightEntries = [];
   final Map<String, DateTime> _achievementUnlocks = {};
 
   bool _darkMode = true;
   List<int> _dayTargetXp = List.of(defaultDayTargetXp);
+  String _userName = '';
+  DateTime? _userBirthday;
+  String _appPasscode = '';
+  String _appRecoveryCode = '';
   String _lastRolloverKey = '';
   final Set<String> _dismissedOverloadHints = {};
+
+  bool get hasAppPasscode => _appPasscode.isNotEmpty;
+  bool get hasAppRecoveryCode => _appRecoveryCode.isNotEmpty;
+  String get appRecoveryCode => _appRecoveryCode;
+  String get userName => _userName.trim();
+  DateTime? get userBirthday => _userBirthday;
+  bool get hasUserName => userName.isNotEmpty;
+  bool get hasBirthday => _userBirthday != null;
+  String get birthdayLabel =>
+      _userBirthday == null ? 'Not set' : _formatBirthday(_userBirthday!);
 
   // Gamification / app settings (System page).
   double _xpMultiplier = 1.0;
@@ -59,7 +74,25 @@ class MotivationController extends ChangeNotifier {
   bool _motivationMessages = true;
   bool _showAtmosphere = true;
   int _dailyGoalPercent = 60;
+  int _weeklyReviewDay = DateTime.sunday;
+  String _weeklyReviewCompletedWeekKey = '';
+  String _defaultWeekTemplateId = '';
   DataWindow _statsWindow = DataWindow.d30;
+
+  int get weeklyReviewDay => _weeklyReviewDay;
+  String get defaultWeekTemplateId => _defaultWeekTemplateId;
+  WeekTemplate? get defaultWeekTemplate => _templates
+      .where((template) => template.id == _defaultWeekTemplateId)
+      .firstOrNull;
+  String get weeklyReviewCompletedWeekKey => _weeklyReviewCompletedWeekKey;
+  bool get hasCompletedWeeklyReviewThisWeek =>
+      _weeklyReviewCompletedWeekKey == dayKey(weekStart(today));
+
+  bool isWeeklyReviewDueFor(DateTime date) {
+    final normalized = dateOnly(date);
+    if (normalized.weekday != _weeklyReviewDay) return false;
+    return _weeklyReviewCompletedWeekKey != dayKey(weekStart(normalized));
+  }
 
   /// dateKey of the last day we already handed out a perfect-day toast for.
   String _lastPerfectToastKey = '';
@@ -67,10 +100,6 @@ class MotivationController extends ChangeNotifier {
 
   /// Achievement ids unlocked since the UI last cleared them (toast queue).
   final List<String> _pendingAchievementToasts = [];
-
-  /// Reward ids that crossed their unlock level since the UI last checked.
-  final List<String> _pendingRewardToasts = [];
-  Set<String> _rewardsUnlockedSnapshot = {};
 
   bool _ready = false;
   bool get isReady => _ready;
@@ -95,9 +124,6 @@ class MotivationController extends ChangeNotifier {
     _proposals
       ..clear()
       ..addAll(snapshot.proposals);
-    _rewards
-      ..clear()
-      ..addAll(snapshot.rewards);
     _milestones
       ..clear()
       ..addAll(snapshot.milestones);
@@ -110,6 +136,13 @@ class MotivationController extends ChangeNotifier {
 
     final settings = snapshot.settings;
     _darkMode = settings['darkMode'] as bool? ?? true;
+    _userName = (settings['userName'] as String?)?.trim() ?? '';
+    final birthdayRaw = settings['userBirthday'] as String?;
+    _userBirthday = birthdayRaw != null && birthdayRaw.isNotEmpty
+        ? DateTime.tryParse(birthdayRaw)
+        : null;
+    _appPasscode = settings['appPasscode'] as String? ?? '';
+    _appRecoveryCode = settings['appRecoveryCode'] as String? ?? '';
     final storedTargets = settings['dayTargetXp'];
     if (storedTargets is List && storedTargets.length == 7) {
       _dayTargetXp = [for (final t in storedTargets) (t as num).toInt()];
@@ -126,6 +159,12 @@ class MotivationController extends ChangeNotifier {
     _showAtmosphere = settings['showAtmosphere'] as bool? ?? true;
     _dailyGoalPercent =
         (settings['dailyGoalPercent'] as num?)?.toInt().clamp(1, 100) ?? 60;
+    _weeklyReviewDay =
+        (settings['weeklyReviewDay'] as num?)?.toInt().clamp(1, 7) ??
+        DateTime.sunday;
+    _weeklyReviewCompletedWeekKey =
+        settings['weeklyReviewDoneKey'] as String? ?? '';
+    _defaultWeekTemplateId = settings['defaultWeekTemplateId'] as String? ?? '';
     _lastPerfectToastKey = settings['lastPerfectToastKey'] as String? ?? '';
     _lastRolloverKey = snapshot.settings['lastRolloverKey'] as String? ?? '';
 
@@ -134,15 +173,6 @@ class MotivationController extends ChangeNotifier {
         _categories.add(category);
         await _database.saveCategory(category);
       }
-    }
-
-    final rewardsSeeded = snapshot.settings['rewardsSeeded'] as bool? ?? false;
-    if (_rewards.isEmpty && !rewardsSeeded) {
-      for (final reward in Reward.defaults(DateTime.now())) {
-        _rewards.add(reward);
-        await _database.saveReward(reward);
-      }
-      await _database.saveSetting('rewardsSeeded', true);
     }
 
     // Seed a small starter set of habits on first run.
@@ -156,6 +186,8 @@ class MotivationController extends ChangeNotifier {
       await _database.saveSetting('starterHabitsSeeded', true);
     }
 
+    await _purgeTestRoutineEntries();
+
     _plan = PlanService(
       database: _database,
       categories: _categories,
@@ -163,7 +195,6 @@ class MotivationController extends ChangeNotifier {
       occurrences: _occurrences,
       templates: _templates,
       proposals: _proposals,
-      rewards: _rewards,
       milestones: _milestones,
       weightEntries: _weightEntries,
     );
@@ -171,11 +202,84 @@ class MotivationController extends ChangeNotifier {
     await _seedLifeGrid(snapshot.settings);
 
     await _plan.refreshMaterialisation();
-    _rewardsUnlockedSnapshot = _currentlyUnlockedRewardIds();
     await _runRollover();
 
     _ready = true;
     notifyListeners();
+  }
+
+  Future<void> _purgeTestRoutineEntries() async {
+    final testIds = _definitions
+        .where((definition) => definition.title.trim().toUpperCase() == 'TEST')
+        .map((definition) => definition.id)
+        .toList();
+    if (testIds.isEmpty) return;
+
+    for (final id in testIds) {
+      _definitions.removeWhere((definition) => definition.id == id);
+      await _database.deleteDefinition(id);
+
+      final occurrenceIds = _occurrences
+          .where((occurrence) => occurrence.sourceDefinitionId == id)
+          .map((occurrence) => occurrence.id)
+          .toList();
+      if (occurrenceIds.isNotEmpty) {
+        _occurrences.removeWhere(
+          (occurrence) => occurrenceIds.contains(occurrence.id),
+        );
+        await _database.deleteOccurrences(occurrenceIds);
+      }
+    }
+  }
+
+  String generateRecoveryCode() {
+    final random = Random();
+    final first = random.nextInt(900000) + 100000;
+    final second = random.nextInt(900000) + 100000;
+    return 'QUEST-$first-$second';
+  }
+
+  Future<void> setAppPasscode(String passcode, {String? recoveryCode}) async {
+    final normalized = passcode.trim();
+    if (normalized.isEmpty) return;
+    final code = (recoveryCode ?? generateRecoveryCode()).trim();
+    _appPasscode = normalized;
+    _appRecoveryCode = code;
+    await _database.saveSetting('appPasscode', normalized);
+    await _database.saveSetting('appRecoveryCode', code);
+  }
+
+  Future<bool> validateAppPasscode(String passcode) async {
+    final normalized = passcode.trim();
+    return _appPasscode.isNotEmpty && normalized == _appPasscode;
+  }
+
+  Future<bool> validateRecoveryCode(String recoveryCode) async {
+    final normalized = recoveryCode.trim();
+    return _appRecoveryCode.isNotEmpty && normalized == _appRecoveryCode;
+  }
+
+  Future<void> resetAppPasscode({
+    required String recoveryCode,
+    required String newPasscode,
+  }) async {
+    final normalizedRecovery = recoveryCode.trim();
+    final normalizedPasscode = newPasscode.trim();
+    if (normalizedRecovery.isEmpty || normalizedPasscode.isEmpty) {
+      throw ArgumentError('Recovery code and new passcode are required.');
+    }
+    if (!await validateRecoveryCode(normalizedRecovery)) {
+      throw ArgumentError('Recovery code is incorrect.');
+    }
+    _appPasscode = normalizedPasscode;
+    await _database.saveSetting('appPasscode', normalizedPasscode);
+  }
+
+  Future<void> clearAppPasscode() async {
+    _appPasscode = '';
+    _appRecoveryCode = '';
+    await _database.saveSetting('appPasscode', null);
+    await _database.saveSetting('appRecoveryCode', null);
   }
 
   /// One-time seed for the 9×9 Life Grid: renames/extends categories into
@@ -250,7 +354,8 @@ class MotivationController extends ChangeNotifier {
         title: 'Balanced Meals',
         categoryId: 'health',
         xp: 5,
-        note: 'At least two main meals built around protein and nutritious food.',
+        note:
+            'At least two main meals built around protein and nutritious food.',
       ),
       daily(
         id: LifeGridIds.protectSleep,
@@ -266,7 +371,8 @@ class MotivationController extends ChangeNotifier {
         title: 'Decide & Act',
         categoryId: 'courage',
         xp: 10,
-        note: 'Choose one normal, reversible decision you are overthinking. '
+        note:
+            'Choose one normal, reversible decision you are overthinking. '
             'Give yourself a maximum of ~10 minutes to think, then choose and '
             'act. Success is making the decision, not whether it was perfect.',
       ),
@@ -275,7 +381,8 @@ class MotivationController extends ChangeNotifier {
         title: 'Mental Reset',
         categoryId: 'mindfulness',
         xp: 5,
-        note: 'Spend ~5 minutes writing down what is occupying your mind and '
+        note:
+            'Spend ~5 minutes writing down what is occupying your mind and '
             'classify it: ACT, ACCEPT, or LET GO.',
         recurrence: const RecurrenceRule.timesPerWeek(5),
       ),
@@ -284,7 +391,8 @@ class MotivationController extends ChangeNotifier {
         title: 'Learn or Build',
         categoryId: 'coding',
         xp: 10,
-        note: 'At least 20 focused minutes learning or building something '
+        note:
+            'At least 20 focused minutes learning or building something '
             'related to Flutter, Dart, iOS development, app development, '
             'AI-assisted development, or one of your active projects.',
         recurrence: const RecurrenceRule.timesPerWeek(4),
@@ -329,14 +437,16 @@ class MotivationController extends ChangeNotifier {
         title: 'Weigh & Review',
         categoryId: 'health',
         xp: 10,
-        note: 'Record ~3 weigh-ins during the week and enter the weekly average.',
+        note:
+            'Record ~3 weigh-ins during the week and enter the weekly average.',
       ),
       weekly(
         id: LifeGridIds.courageChallenge,
         title: 'Courage Challenge',
         categoryId: 'courage',
         xp: 25,
-        note: 'Do one thing that makes you slightly uncomfortable but supports '
+        note:
+            'Do one thing that makes you slightly uncomfortable but supports '
             'the person you want to become — ask instead of wondering, speak '
             'openly, share something you made, attend something unfamiliar, '
             'talk to somebody new, say no when appropriate, try something you '
@@ -347,7 +457,8 @@ class MotivationController extends ChangeNotifier {
         title: 'Create Connection',
         categoryId: 'relationships',
         xp: 15,
-        note: 'Create one genuine opportunity for connection — invite a friend '
+        note:
+            'Create one genuine opportunity for connection — invite a friend '
             'somewhere, organize a game night, ask someone to grab food or '
             'coffee, contact somebody you haven\'t seen recently. Success is '
             'measured by your action, not the other person\'s response.',
@@ -357,7 +468,8 @@ class MotivationController extends ChangeNotifier {
         title: 'Improvement Idea',
         categoryId: 'work',
         xp: 10,
-        note: 'Record at least one idea for improving a process, automating '
+        note:
+            'Record at least one idea for improving a process, automating '
             'something, solving a problem, creating a product, or challenging '
             'an inefficient existing process.',
       ),
@@ -366,7 +478,8 @@ class MotivationController extends ChangeNotifier {
         title: 'Side Business Session',
         categoryId: 'financial',
         xp: 20,
-        note: 'At least 60 focused minutes developing, researching or '
+        note:
+            'At least 60 focused minutes developing, researching or '
             'validating a realistic additional income source or side business.',
         target: const HabitTarget(amount: 60, unit: TargetUnit.minutes),
       ),
@@ -375,7 +488,8 @@ class MotivationController extends ChangeNotifier {
         title: 'Learning Session',
         categoryId: 'learning',
         xp: 20,
-        note: '60–90 focused minutes improving Flutter, Dart, iOS, Xcode, '
+        note:
+            '60–90 focused minutes improving Flutter, Dart, iOS, Xcode, '
             'product development, or another useful skill.',
         target: const HabitTarget(amount: 60, unit: TargetUnit.minutes),
       ),
@@ -384,7 +498,8 @@ class MotivationController extends ChangeNotifier {
         title: 'Deep Build',
         categoryId: 'coding',
         xp: 30,
-        note: 'At least two focused hours moving one active project forward — '
+        note:
+            'At least two focused hours moving one active project forward — '
             'ideally ending with something tangible: a working feature, '
             'prototype, design, tested functionality, published build, useful '
             'document, or user feedback.',
@@ -395,7 +510,8 @@ class MotivationController extends ChangeNotifier {
         title: 'Fun Without Productivity',
         categoryId: 'mindfulness',
         xp: 15,
-        note: 'Do something because you enjoy it, not because it is '
+        note:
+            'Do something because you enjoy it, not because it is '
             'productive — board games, friends, gaming, a trip, a movie, a '
             'hobby, a relaxed evening.',
       ),
@@ -404,7 +520,8 @@ class MotivationController extends ChangeNotifier {
         title: 'Weekly Life Review',
         categoryId: 'mindfulness',
         xp: 20,
-        note: 'Did I train at least twice? What was my weight trend? What did '
+        note:
+            'Did I train at least twice? What was my weight trend? What did '
             'I do despite overthinking? What did I create or learn? Did I '
             'create meaningful social contact? Did I actually enjoy part of '
             'this week? What is the ONE most important thing next week?',
@@ -438,7 +555,8 @@ class MotivationController extends ChangeNotifier {
         title: 'Monthly Review: Health',
         categoryId: 'health',
         xp: 50,
-        note: 'Review weight trend, training consistency, energy, fitness. '
+        note:
+            'Review weight trend, training consistency, energy, fitness. '
             'Long-term goal ~100kg or slightly below; starting range '
             '~117–118kg.',
       ),
@@ -447,7 +565,8 @@ class MotivationController extends ChangeNotifier {
         title: 'Monthly Review: Courage & Confidence',
         categoryId: 'courage',
         xp: 50,
-        note: 'Identify the most meaningful situation this month where you '
+        note:
+            'Identify the most meaningful situation this month where you '
             'acted despite insecurity or overthinking.',
       ),
       monthly(
@@ -455,7 +574,8 @@ class MotivationController extends ChangeNotifier {
         title: 'Monthly Review: Friends & Relationships',
         categoryId: 'relationships',
         xp: 40,
-        note: 'Who initiated contact? Who did you enjoy spending time with? '
+        note:
+            'Who initiated contact? Who did you enjoy spending time with? '
             'Which relationships felt reciprocal? Where did you spend too '
             'much energy chasing clarity or attention? Not meant to score '
             'people — just to notice healthy reciprocity.',
@@ -465,7 +585,8 @@ class MotivationController extends ChangeNotifier {
         title: 'Monthly Review: Career & Meaning',
         categoryId: 'work',
         xp: 40,
-        note: 'Choose one idea — process improvement, new thinking, '
+        note:
+            'Choose one idea — process improvement, new thinking, '
             'automation, product creation, professional independence — and '
             'decide whether to pursue, save or discard it.',
       ),
@@ -474,7 +595,8 @@ class MotivationController extends ChangeNotifier {
         title: 'Monthly Review: Financial Freedom',
         categoryId: 'financial',
         xp: 50,
-        note: 'Review saving/investing, side-business progress, additional-'
+        note:
+            'Review saving/investing, side-business progress, additional-'
             'income experiments. Run or define at least one small validation '
             'experiment instead of a large financial commitment based only '
             'on an idea.',
@@ -484,7 +606,8 @@ class MotivationController extends ChangeNotifier {
         title: 'Monthly Review: Adventure & Learning',
         categoryId: 'learning',
         xp: 50,
-        note: 'Record at least one new experience, new place, meaningful '
+        note:
+            'Record at least one new experience, new place, meaningful '
             'learning milestone, or spontaneous activity.',
       ),
       monthly(
@@ -492,7 +615,8 @@ class MotivationController extends ChangeNotifier {
         title: 'Ship Something',
         categoryId: 'coding',
         xp: 60,
-        note: 'Complete something tangible: an app feature, prototype, '
+        note:
+            'Complete something tangible: an app feature, prototype, '
             'TestFlight build, tester release, finished design, useful tool, '
             'or published creation.',
       ),
@@ -501,14 +625,19 @@ class MotivationController extends ChangeNotifier {
         title: 'Monthly Review: Happiness & Balance',
         categoryId: 'mindfulness',
         xp: 50,
-        note: 'Did you actually enjoy the life you lived this month? Score '
+        note:
+            'Did you actually enjoy the life you lived this month? Score '
             '1–10. What gave you energy? What drained you? What should you '
             'do more of? What should you reduce? What is one change for next '
             'month?',
       ),
     ];
 
-    for (final definition in [...dailyHabits, ...weeklyTasks, ...monthlyReview]) {
+    for (final definition in [
+      ...dailyHabits,
+      ...weeklyTasks,
+      ...monthlyReview,
+    ]) {
       _definitions.add(definition);
       await _database.saveDefinition(definition);
     }
@@ -549,7 +678,8 @@ class MotivationController extends ChangeNotifier {
       title: 'Publish an iOS App',
       categoryId: 'coding',
       xp: 150,
-      description: 'Dev environment → working app → stable core → testing → '
+      description:
+          'Dev environment → working app → stable core → testing → '
           'TestFlight → App Store preparation → publication.',
       status: GoalStatus.inProgress,
     );
@@ -565,7 +695,8 @@ class MotivationController extends ChangeNotifier {
       title: 'Development hardware acquired',
       categoryId: 'coding',
       xp: 50,
-      description: '2020 M1 MacBook Air, acquired to support learning iOS '
+      description:
+          '2020 M1 MacBook Air, acquired to support learning iOS '
           'development and building future projects.',
       status: GoalStatus.achieved,
     );
@@ -765,10 +896,12 @@ class MotivationController extends ChangeNotifier {
   /// Grid definition (workouts, Courage Challenges, ...).
   int weeklyCompletionCount(String definitionId) {
     return _occurrences
-        .where((o) =>
-            o.sourceDefinitionId == definitionId &&
-            o.isFullyCompleted &&
-            isSameWeek(o.date, today))
+        .where(
+          (o) =>
+              o.sourceDefinitionId == definitionId &&
+              o.isFullyCompleted &&
+              isSameWeek(o.date, today),
+        )
         .length;
   }
 
@@ -781,41 +914,6 @@ class MotivationController extends ChangeNotifier {
       deepBuildDone: weeklyCompletionCount(LifeGridIds.deepBuild) > 0,
       courageDone: weeklyCompletionCount(LifeGridIds.courageChallenge) > 0,
     );
-  }
-
-  // ---- Rewards --------------------------------------------------------
-
-  /// All rewards, unlocked first (nearest required level next), then locked
-  /// by ascending required level.
-  List<Reward> get rewards {
-    final level = levelProgress.level;
-    final list = [..._rewards]
-      ..sort((a, b) {
-        final aUnlocked = a.isUnlocked(level);
-        final bUnlocked = b.isUnlocked(level);
-        if (aUnlocked != bUnlocked) return aUnlocked ? -1 : 1;
-        return a.requiredLevel.compareTo(b.requiredLevel);
-      });
-    return List.unmodifiable(list);
-  }
-
-  List<Reward> get unlockedRewards =>
-      rewards.where((r) => r.isUnlocked(levelProgress.level)).toList();
-
-  bool rewardUnlocked(Reward reward) => reward.isUnlocked(levelProgress.level);
-
-  List<Reward> takeRewardToasts() {
-    final ids = List<String>.from(_pendingRewardToasts);
-    _pendingRewardToasts.clear();
-    return [for (final id in ids) ..._rewards.where((r) => r.id == id)];
-  }
-
-  Set<String> _currentlyUnlockedRewardIds() {
-    final level = levelProgress.level;
-    return {
-      for (final reward in _rewards)
-        if (reward.isUnlocked(level)) reward.id,
-    };
   }
 
   /// All occurrences on [date], ordered: open first → category sort order →
@@ -874,7 +972,11 @@ class MotivationController extends ChangeNotifier {
       );
 
   List<List<HeatCell>> contributionHeatmap({int weeks = 20}) =>
-      buildContributionHeatmap(occurrences: _occurrences, today: today, weeks: weeks);
+      buildContributionHeatmap(
+        occurrences: _occurrences,
+        today: today,
+        weeks: weeks,
+      );
 
   int completedCountForDate(DateTime date) =>
       occurrencesForDay(date).where((o) => o.isCompleted).length;
@@ -1270,6 +1372,26 @@ class MotivationController extends ChangeNotifier {
     await _afterWrite();
   }
 
+  Future<void> setDefaultWeekTemplate(String? templateId) async {
+    _defaultWeekTemplateId = templateId ?? '';
+    await _database.saveSetting('defaultWeekTemplateId', templateId);
+    await _afterWrite();
+  }
+
+  Future<TemplateApplyResult> applyDefaultWeekTemplate({
+    required int weekOffset,
+  }) async {
+    final templateId = _defaultWeekTemplateId;
+    if (templateId.isEmpty) {
+      return const TemplateApplyResult(added: 0, skipped: 0);
+    }
+    final result = await applyTemplate(
+      templateId: templateId,
+      weekOffset: weekOffset,
+    );
+    return result;
+  }
+
   Future<void> deleteTemplate(String id) async {
     await _plan.deleteTemplate(id);
     await _afterWrite();
@@ -1314,54 +1436,6 @@ class MotivationController extends ChangeNotifier {
     await _afterWrite();
   }
 
-  // ---- Rewards --------------------------------------------------------
-
-  Future<void> addReward({
-    required String title,
-    required String description,
-    required String iconKey,
-    required int requiredLevel,
-  }) async {
-    await _plan.addReward(
-      title: title,
-      description: description,
-      iconKey: iconKey,
-      requiredLevel: requiredLevel,
-    );
-    _rewardsUnlockedSnapshot = _currentlyUnlockedRewardIds();
-    await _afterWrite();
-  }
-
-  Future<void> updateReward(
-    String id, {
-    String? title,
-    String? description,
-    String? iconKey,
-    int? requiredLevel,
-  }) async {
-    await _plan.updateReward(
-      id,
-      title: title,
-      description: description,
-      iconKey: iconKey,
-      requiredLevel: requiredLevel,
-    );
-    _rewardsUnlockedSnapshot = _currentlyUnlockedRewardIds();
-    await _afterWrite();
-  }
-
-  Future<void> deleteReward(String id) async {
-    await _plan.deleteReward(id);
-    await _afterWrite();
-  }
-
-  /// Returns true if the reward was redeemed (it was unlocked).
-  Future<bool> redeemReward(String id) async {
-    final ok = await _plan.redeemReward(id, levelProgress.level);
-    await _afterWrite();
-    return ok;
-  }
-
   // ---- Proposals --------------------------------------------------------
 
   Future<void> approveProposal(String id) async {
@@ -1375,6 +1449,68 @@ class MotivationController extends ChangeNotifier {
   }
 
   // ---- Settings --------------------------------------------------------
+
+  Future<void> setUserName(String value) async {
+    final normalized = value.trim();
+    if (_userName == normalized) return;
+    _userName = normalized;
+    await _setAndSave('userName', _userName);
+  }
+
+  Future<void> setUserBirthday(DateTime? value) async {
+    if (value == null && _userBirthday == null) return;
+    if (value != null &&
+        _userBirthday != null &&
+        _userBirthday!.isAtSameMomentAs(value)) {
+      return;
+    }
+    _userBirthday = value;
+    await _database.saveSetting('userBirthday', value?.toIso8601String());
+    notifyListeners();
+  }
+
+  String greetingFor(DateTime now) {
+    final name = userName;
+    final birthday = _birthdayMatches(now);
+
+    if (birthday) {
+      return name.isEmpty ? 'Happy Birthday!' : 'Happy Birthday, $name!';
+    }
+
+    final hour = now.hour;
+    final greeting = hour < 12
+        ? 'Good morning'
+        : hour < 17
+        ? 'Good afternoon'
+        : 'Good evening';
+
+    return name.isEmpty ? '$greeting!' : '$greeting, $name!';
+  }
+
+  bool isBirthdayToday() => _birthdayMatches(DateTime.now());
+
+  bool _birthdayMatches(DateTime now) {
+    if (_userBirthday == null) return false;
+    return _userBirthday!.month == now.month && _userBirthday!.day == now.day;
+  }
+
+  String _formatBirthday(DateTime date) {
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${monthNames[date.month - 1]} ${date.day}, ${date.year}';
+  }
 
   Future<void> setDarkMode(bool value) async {
     if (_darkMode == value) return;
@@ -1441,6 +1577,48 @@ class MotivationController extends ChangeNotifier {
     await _setAndSave('dailyGoalPercent', _dailyGoalPercent);
   }
 
+  Future<void> setWeeklyReviewDay(int value) async {
+    final normalized = value.clamp(1, 7);
+    if (_weeklyReviewDay == normalized) return;
+    _weeklyReviewDay = normalized;
+    await _setAndSave('weeklyReviewDay', normalized);
+  }
+
+  Future<void> markWeeklyReviewDone({
+    required String wins,
+    required String misses,
+    required String nextFocus,
+  }) async {
+    final weekKey = dayKey(weekStart(today));
+    _weeklyReviewCompletedWeekKey = weekKey;
+
+    final payload = <String, String>{
+      'wins': wins.trim(),
+      'misses': misses.trim(),
+      'nextFocus': nextFocus.trim(),
+    };
+
+    await _database.saveSetting('weeklyReviewDoneKey', weekKey);
+    await _database.saveSetting('weeklyReview-$weekKey', jsonEncode(payload));
+    notifyListeners();
+  }
+
+  Future<Map<String, String>> weeklyReviewSnapshotForWeek(DateTime date) async {
+    final key = dayKey(weekStart(date));
+    final raw = await _database.loadSetting('weeklyReview-$key');
+    if (raw == null) return const {'wins': '', 'misses': '', 'nextFocus': ''};
+    try {
+      final decoded = jsonDecode(raw as String) as Map<String, dynamic>;
+      return {
+        'wins': (decoded['wins'] as String?) ?? '',
+        'misses': (decoded['misses'] as String?) ?? '',
+        'nextFocus': (decoded['nextFocus'] as String?) ?? '',
+      };
+    } catch (_) {
+      return const {'wins': '', 'misses': '', 'nextFocus': ''};
+    }
+  }
+
   // ---- Backup --------------------------------------------------------
 
   Future<String> exportBackupJson() => _backup.exportJson();
@@ -1457,7 +1635,6 @@ class MotivationController extends ChangeNotifier {
     _occurrences.clear();
     _templates.clear();
     _proposals.clear();
-    _rewards.clear();
     _milestones.clear();
     _weightEntries.clear();
     _achievementUnlocks.clear();
@@ -1466,13 +1643,7 @@ class MotivationController extends ChangeNotifier {
       _categories.add(category);
       await _database.saveCategory(category);
     }
-    for (final reward in Reward.defaults(DateTime.now())) {
-      _rewards.add(reward);
-      await _database.saveReward(reward);
-    }
-    await _database.saveSetting('rewardsSeeded', true);
     _dayTargetXp = List.of(defaultDayTargetXp);
-    _rewardsUnlockedSnapshot = _currentlyUnlockedRewardIds();
     notifyListeners();
   }
 
@@ -1480,15 +1651,7 @@ class MotivationController extends ChangeNotifier {
 
   Future<void> _afterWrite() async {
     await _checkAchievements();
-    _checkRewardUnlocks();
     notifyListeners();
-  }
-
-  void _checkRewardUnlocks() {
-    final now = _currentlyUnlockedRewardIds();
-    final fresh = now.difference(_rewardsUnlockedSnapshot);
-    _pendingRewardToasts.addAll(fresh);
-    _rewardsUnlockedSnapshot = now;
   }
 
   Future<void> _checkAchievements() async {

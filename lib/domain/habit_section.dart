@@ -12,6 +12,7 @@ const Map<String, String> _knownSectionEmoji = {
   'evening': '🌆',
   'wind down': '🌙',
   'night': '🌙',
+  'life grid': '🧭',
   'general': '📌',
 };
 
@@ -22,14 +23,18 @@ const List<String> _sectionOrder = [
   'evening',
   'wind down',
   'night',
+  'life grid',
 ];
 
 const List<String> sectionPresets = [
   'Morning',
-  'Deep Work',
   'Afternoon',
+  'Night',
+  'Deep Work',
   'Evening',
   'Wind Down',
+  'Life Grid',
+  'General',
 ];
 
 String emojiForSection(String section) =>
@@ -39,7 +44,8 @@ String emojiForSection(String section) =>
 /// everything else after (alphabetically), 'General'/'' always last.
 int sectionSortRank(String section) {
   final key = section.trim().toLowerCase();
-  if (key.isEmpty || key == 'general') return 1000;
+  if (key.isEmpty) return 1000;
+  if (key == 'general') return 2000;
   final known = _sectionOrder.indexOf(key);
   return known == -1 ? 500 : known;
 }

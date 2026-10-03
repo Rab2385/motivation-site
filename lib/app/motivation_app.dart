@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import '../l10n/app_text.dart';
+import '../pages/login_gate.dart';
 import '../pages/motivation_shell.dart';
 import '../state/motivation_controller.dart';
 import '../theme/app_theme.dart';
@@ -17,10 +18,13 @@ class MotivationApp extends StatefulWidget {
 
 class _MotivationAppState extends State<MotivationApp>
     with WidgetsBindingObserver {
+  bool _isUnlocked = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _isUnlocked = widget.controller.hasAppPasscode;
   }
 
   @override
@@ -51,7 +55,12 @@ class _MotivationAppState extends State<MotivationApp>
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: MotivationShell(controller: widget.controller),
+      home: _isUnlocked
+          ? MotivationShell(controller: widget.controller)
+          : LoginGate(
+              controller: widget.controller,
+              onUnlocked: () => setState(() => _isUnlocked = true),
+            ),
     );
   }
 }

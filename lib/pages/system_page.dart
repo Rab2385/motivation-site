@@ -25,7 +25,6 @@ class _SystemPageState extends State<SystemPage> {
   static const _tabs = [
     AppText.tabGeneral,
     AppText.tabGamification,
-    AppText.tabAppearance,
     AppText.tabData,
     AppText.tabAbout,
   ];
@@ -45,7 +44,10 @@ class _SystemPageState extends State<SystemPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const TerminalHeader('system', comment: AppText.settingsSubline),
+                    const TerminalHeader(
+                      'system',
+                      comment: AppText.settingsSubline,
+                    ),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 6,
@@ -66,8 +68,7 @@ class _SystemPageState extends State<SystemPage> {
               switch (_tab) {
                 0 => _GeneralTab(controller: controller),
                 1 => _GamificationTab(controller: controller),
-                2 => _AppearanceTab(controller: controller),
-                3 => _DataTab(controller: controller),
+                2 => _DataTab(controller: controller),
                 _ => const _AboutTab(),
               },
             ],
@@ -79,7 +80,11 @@ class _SystemPageState extends State<SystemPage> {
 }
 
 class _TabChip extends StatelessWidget {
-  const _TabChip({required this.label, required this.selected, required this.onTap});
+  const _TabChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -92,15 +97,22 @@ class _TabChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.amber.withValues(alpha: 0.18) : AppTheme.cardInset,
-          border: Border.all(color: selected ? AppTheme.amber : AppTheme.border),
+          color: selected
+              ? AppTheme.amber.withValues(alpha: 0.18)
+              : AppTheme.cardInset,
+          border: Border.all(
+            color: selected ? AppTheme.amber : AppTheme.border,
+          ),
           borderRadius: BorderRadius.circular(5),
         ),
-        child: Text(label,
-            style: TextStyle(
-                fontFamilyFallback: AppTheme.mono,
-                fontSize: 12,
-                color: selected ? AppTheme.amberBright : AppTheme.textMid)),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamilyFallback: AppTheme.mono,
+            fontSize: 12,
+            color: selected ? AppTheme.amberBright : AppTheme.textMid,
+          ),
+        ),
       ),
     );
   }
@@ -146,17 +158,22 @@ class _SettingRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontFamilyFallback: AppTheme.mono,
-                        color: AppTheme.textHigh,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12.5)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamilyFallback: AppTheme.mono,
+                    color: AppTheme.textHigh,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12.5,
+                  ),
+                ),
                 if (hint != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: Text('// $hint',
-                        style: AppTheme.comment.copyWith(fontSize: 11)),
+                    child: Text(
+                      '// $hint',
+                      style: AppTheme.comment.copyWith(fontSize: 11),
+                    ),
                   ),
               ],
             ),
@@ -170,7 +187,11 @@ class _SettingRow extends StatelessWidget {
 }
 
 class _Stepper extends StatelessWidget {
-  const _Stepper({required this.label, required this.onDec, required this.onInc});
+  const _Stepper({
+    required this.label,
+    required this.onDec,
+    required this.onInc,
+  });
   final String label;
   final VoidCallback? onDec;
   final VoidCallback? onInc;
@@ -187,23 +208,28 @@ class _Stepper extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-              visualDensity: VisualDensity.compact,
-              onPressed: onDec,
-              icon: const Icon(Icons.remove, size: 15)),
+            visualDensity: VisualDensity.compact,
+            onPressed: onDec,
+            icon: const Icon(Icons.remove, size: 15),
+          ),
           Container(
             constraints: const BoxConstraints(minWidth: 44),
             alignment: Alignment.center,
-            child: Text(label,
-                style: const TextStyle(
-                    fontFamilyFallback: AppTheme.mono,
-                    color: AppTheme.textHigh,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12)),
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontFamilyFallback: AppTheme.mono,
+                color: AppTheme.textHigh,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
           ),
           IconButton(
-              visualDensity: VisualDensity.compact,
-              onPressed: onInc,
-              icon: const Icon(Icons.add, size: 15)),
+            visualDensity: VisualDensity.compact,
+            onPressed: onInc,
+            icon: const Icon(Icons.add, size: 15),
+          ),
         ],
       ),
     );
@@ -216,9 +242,121 @@ class _GeneralTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _Group(
-      title: AppText.dayTargets,
-      children: [for (var i = 0; i < 7; i++) _TargetRow(controller: controller, weekdayIndex: i)],
+    return Column(
+      children: [
+        _Group(
+          title: AppText.profile,
+          children: [
+            _SettingRow(
+              title: 'Name',
+              hint: 'Used in the daily greeting',
+              trailing: SizedBox(
+                width: 220,
+                child: TextFormField(
+                  initialValue: controller.userName,
+                  textAlign: TextAlign.end,
+                  onChanged: controller.setUserName,
+                  style: const TextStyle(
+                    color: AppTheme.textHigh,
+                    fontFamilyFallback: AppTheme.mono,
+                    fontSize: 12.5,
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: 'Your name',
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            _SettingRow(
+              title: 'Birthday',
+              hint: 'Birthday wishes show automatically',
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextButton.icon(
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: controller.userBirthday ?? DateTime.now(),
+                        firstDate: DateTime(1900),
+                        lastDate: DateTime.now().add(
+                          const Duration(days: 36500),
+                        ),
+                      );
+                      if (picked != null) {
+                        await controller.setUserBirthday(picked);
+                      }
+                    },
+                    icon: const Icon(Icons.cake_rounded, size: 15),
+                    label: Text(
+                      controller.userBirthday == null
+                          ? 'Add birthday'
+                          : controller.birthdayLabel,
+                    ),
+                  ),
+                  if (controller.userBirthday != null)
+                    TextButton(
+                      onPressed: () async => controller.setUserBirthday(null),
+                      child: const Text('Clear'),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        _Group(
+          title: AppText.notifications,
+          children: [
+            _SettingRow(
+              title: AppText.dailyReminderLabel,
+              hint: AppText.dailyReminderHint,
+              trailing: Switch(
+                value: controller.dailyReminder,
+                onChanged: controller.setDailyReminder,
+              ),
+            ),
+            _SettingRow(
+              title: AppText.motivationMessagesLabel,
+              hint: AppText.motivationMessagesHint,
+              trailing: Switch(
+                value: controller.motivationMessages,
+                onChanged: controller.setMotivationMessages,
+              ),
+            ),
+            _SettingRow(
+              title: AppText.weeklyReviewDayLabel,
+              hint: AppText.weeklyReviewDayHint,
+              trailing: DropdownButton<int>(
+                value: controller.weeklyReviewDay,
+                underline: const SizedBox.shrink(),
+                dropdownColor: AppTheme.card,
+                items: [
+                  for (var day = DateTime.monday; day <= DateTime.sunday; day++)
+                    DropdownMenuItem<int>(
+                      value: day,
+                      child: Text(AppText.weekdayLong[day - DateTime.monday]),
+                    ),
+                ],
+                onChanged: (day) {
+                  if (day != null) controller.setWeeklyReviewDay(day);
+                },
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text(
+                '// ${AppText.notificationsUnavailable}',
+                style: TextStyle(color: AppTheme.textLow, fontSize: 10.5),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -243,8 +381,12 @@ class _GamificationTab extends StatelessWidget {
               hint: AppText.xpMultiplierHint,
               trailing: _Stepper(
                 label: 'x${mult.toStringAsFixed(1)}',
-                onDec: mult > 0.1 ? () => controller.setXpMultiplier(mult - 0.1) : null,
-                onInc: mult < 5.0 ? () => controller.setXpMultiplier(mult + 0.1) : null,
+                onDec: mult > 0.1
+                    ? () => controller.setXpMultiplier(mult - 0.1)
+                    : null,
+                onInc: mult < 5.0
+                    ? () => controller.setXpMultiplier(mult + 0.1)
+                    : null,
               ),
             ),
             _SettingRow(
@@ -268,8 +410,12 @@ class _GamificationTab extends StatelessWidget {
               hint: AppText.perfectDayBonusHint,
               trailing: _Stepper(
                 label: '+$bonus',
-                onDec: bonus > 0 ? () => controller.setPerfectDayBonus(bonus - 10) : null,
-                onInc: bonus < 500 ? () => controller.setPerfectDayBonus(bonus + 10) : null,
+                onDec: bonus > 0
+                    ? () => controller.setPerfectDayBonus(bonus - 10)
+                    : null,
+                onInc: bonus < 500
+                    ? () => controller.setPerfectDayBonus(bonus + 10)
+                    : null,
               ),
             ),
             _SettingRow(
@@ -285,59 +431,22 @@ class _GamificationTab extends StatelessWidget {
               hint: AppText.dailyGoalHint,
               trailing: _Stepper(
                 label: '$goal%',
-                onDec: goal > 5 ? () => controller.setDailyGoalPercent(goal - 5) : null,
-                onInc: goal < 100 ? () => controller.setDailyGoalPercent(goal + 5) : null,
+                onDec: goal > 5
+                    ? () => controller.setDailyGoalPercent(goal - 5)
+                    : null,
+                onInc: goal < 100
+                    ? () => controller.setDailyGoalPercent(goal + 5)
+                    : null,
               ),
             ),
           ],
         ),
         _Group(
-          title: AppText.notifications,
+          title: AppText.dayTargets,
           children: [
-            _SettingRow(
-              title: AppText.dailyReminderLabel,
-              hint: AppText.dailyReminderHint,
-              trailing: Switch(
-                value: controller.dailyReminder,
-                onChanged: controller.setDailyReminder,
-              ),
-            ),
-            _SettingRow(
-              title: AppText.motivationMessagesLabel,
-              hint: AppText.motivationMessagesHint,
-              trailing: Switch(
-                value: controller.motivationMessages,
-                onChanged: controller.setMotivationMessages,
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.only(top: 4),
-              child: Text('// ${AppText.notificationsUnavailable}',
-                  style: TextStyle(color: AppTheme.textLow, fontSize: 10.5)),
-            ),
+            for (var i = 0; i < 7; i++)
+              _TargetRow(controller: controller, weekdayIndex: i),
           ],
-        ),
-      ],
-    );
-  }
-}
-
-class _AppearanceTab extends StatelessWidget {
-  const _AppearanceTab({required this.controller});
-  final MotivationController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return _Group(
-      title: AppText.tabAppearance,
-      children: [
-        _SettingRow(
-          title: AppText.showAtmosphereLabel,
-          hint: AppText.showAtmosphereHint,
-          trailing: Switch(
-            value: controller.showAtmosphere,
-            onChanged: controller.setShowAtmosphere,
-          ),
         ),
       ],
     );
@@ -363,13 +472,21 @@ class _DataTab extends StatelessWidget {
                     Icon(category.icon, color: category.color, size: 16),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(category.name,
-                          style: const TextStyle(fontFamilyFallback: AppTheme.mono, fontSize: 12)),
+                      child: Text(
+                        category.name,
+                        style: const TextStyle(
+                          fontFamilyFallback: AppTheme.mono,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.edit_outlined, size: 15),
-                      onPressed: () =>
-                          showCategoryEditorSheet(context, controller, existing: category),
+                      onPressed: () => showCategoryEditorSheet(
+                        context,
+                        controller,
+                        existing: category,
+                      ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.delete_outline, size: 15),
@@ -394,19 +511,27 @@ class _DataTab extends StatelessWidget {
             _SettingRow(
               title: AppText.exportBackup,
               hint: 'copy the whole database as json.',
-              trailing: OutlinedButton(onPressed: () => _export(context), child: const Text('export')),
+              trailing: OutlinedButton(
+                onPressed: () => _export(context),
+                child: const Text('export'),
+              ),
             ),
             _SettingRow(
               title: AppText.importBackup,
               hint: 'replaces all local data.',
-              trailing: OutlinedButton(onPressed: () => _import(context), child: const Text('import')),
+              trailing: OutlinedButton(
+                onPressed: () => _import(context),
+                child: const Text('import'),
+              ),
             ),
           ],
         ),
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
-            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
             onPressed: () => _clear(context),
             icon: const Icon(Icons.delete_forever, size: 16),
             label: const Text(AppText.clearData),
@@ -426,8 +551,13 @@ class _DataTab extends StatelessWidget {
         content: SizedBox(
           width: 420,
           child: SingleChildScrollView(
-            child: SelectableText(json,
-                style: const TextStyle(fontFamilyFallback: AppTheme.mono, fontSize: 11)),
+            child: SelectableText(
+              json,
+              style: const TextStyle(
+                fontFamilyFallback: AppTheme.mono,
+                fontSize: 11,
+              ),
+            ),
           ),
         ),
         actions: [
@@ -438,7 +568,10 @@ class _DataTab extends StatelessWidget {
             },
             child: const Text('copy'),
           ),
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text(AppText.close)),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(AppText.close),
+          ),
         ],
       ),
     );
@@ -456,7 +589,10 @@ class _DataTab extends StatelessWidget {
           decoration: const InputDecoration(hintText: 'paste backup json …'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text(AppText.cancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(AppText.cancel),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(context, textController.text),
             child: const Text(AppText.importBackup),
@@ -468,13 +604,15 @@ class _DataTab extends StatelessWidget {
     try {
       await controller.importBackupJson(raw);
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Backup imported.')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Backup imported.')));
       }
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Import failed: $error')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Import failed: $error')));
       }
     }
   }
@@ -486,9 +624,14 @@ class _DataTab extends StatelessWidget {
         title: const Text(AppText.clearData),
         content: const Text(AppText.clearDataWarning),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text(AppText.cancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(AppText.cancel),
+          ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text(AppText.delete),
           ),
@@ -512,12 +655,20 @@ class _AboutTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('${AppText.appName} — ${AppText.appTagline}',
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                '${AppText.appName} — ${AppText.appTagline}',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 2),
-              const Text('v0.1.0', style: TextStyle(color: AppTheme.textLow, fontSize: 11)),
+              const Text(
+                'v0.1.0',
+                style: TextStyle(color: AppTheme.textLow, fontSize: 11),
+              ),
               const SizedBox(height: 10),
-              const Text(AppText.aboutText, style: TextStyle(color: AppTheme.textMid, height: 1.5)),
+              const Text(
+                AppText.aboutText,
+                style: TextStyle(color: AppTheme.textMid, height: 1.5),
+              ),
             ],
           ),
         ),
@@ -538,8 +689,13 @@ class _TargetRow extends StatelessWidget {
       children: [
         SizedBox(
           width: 34,
-          child: Text(AppText.weekdayShort[weekdayIndex].toLowerCase(),
-              style: const TextStyle(fontFamilyFallback: AppTheme.mono, fontSize: 11.5)),
+          child: Text(
+            AppText.weekdayShort[weekdayIndex].toLowerCase(),
+            style: const TextStyle(
+              fontFamilyFallback: AppTheme.mono,
+              fontSize: 11.5,
+            ),
+          ),
         ),
         Expanded(
           child: Slider(
@@ -547,14 +703,22 @@ class _TargetRow extends StatelessWidget {
             max: 400,
             divisions: 40,
             label: '$value',
-            onChanged: (next) => controller.setDayTargetXp(weekdayIndex, (next / 10).round() * 10),
+            onChanged: (next) => controller.setDayTargetXp(
+              weekdayIndex,
+              (next / 10).round() * 10,
+            ),
           ),
         ),
         SizedBox(
           width: 52,
-          child: Text('$value xp',
-              style: const TextStyle(
-                  fontFamilyFallback: AppTheme.mono, color: AppTheme.textMid, fontSize: 11.5)),
+          child: Text(
+            '$value xp',
+            style: const TextStyle(
+              fontFamilyFallback: AppTheme.mono,
+              color: AppTheme.textMid,
+              fontSize: 11.5,
+            ),
+          ),
         ),
       ],
     );
