@@ -1,0 +1,26 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css"></head><body>
+<h1 class="t">$ habit-row --interaction</h1><p class="sub">// one deliberate tap to check off, an easy way back, and no accidental check-offs while scrolling</p>
+<div class="row">
+ <div style="width:380px"><div class="lbl bad">current: tapping anywhere on the row checks it off</div>
+  <div class="panel">
+   <div class="tile ann" style="padding:9px 6px"><em>whole row = tap target</em><span class="br">[ ]</span><span class="ttl">Deep build block<small>// 90 min, phone away</small></span><span class="c-st" style="font-size:11px">🔥3</span><span class="xp">+60</span><span class="c-low">⋯</span></div>
+   <div class="tile"><span class="br done">[✓]</span><span class="ttl c-mid">Drink water<small>health</small></span><span class="xp">+20</span><span class="c-low">⋯</span></div>
+  </div>
+  <div class="note">• Scrolling on a phone can easily check off the wrong habit.<br>• Nothing confirms the check-off and there's no undo. The XP toast only appears for perfect days and achievements.<br>• The <b>[ ]</b> text glyph is the only cue that it's a checkbox (about 24px wide).<br>• Skip, move and edit are hidden behind a small ⋯ menu with low contrast.</div>
+ </div>
+ <div style="width:420px"><div class="lbl good">proposed</div>
+  <div class="panel">
+   <div class="tile" style="padding:9px 6px"><span class="ann g" style="padding:6px 8px;margin:-6px 0"><em style="top:-14px;right:auto;left:-4px">44×44</em><span class="br">[ ]</span></span><span class="ttl">Deep build block<small>// 90 min, phone away</small></span><span class="c-st" style="font-size:11px">🔥3</span><span class="xp">+60</span><span class="c-mid">⋯</span></div>
+   <div class="tile" style="padding:9px 6px;background:rgba(63,185,115,.08)"><span class="br done" style="padding:0 8px">[✓]</span><span class="ttl c-mid"><s style="text-decoration-color:var(--low)">Drink water</s><small>health · done 07:42</small></span><span class="xp">+20</span><span class="c-mid">⋯</span></div>
+   <div style="display:flex;margin:6px -12px 0;font-size:11.5px">
+    <div style="flex:1;background:#14301f;color:var(--ok);padding:12px 14px">swipe right → [✓] done</div>
+    <div style="flex:1;background:#2a2010;color:var(--amberB);padding:12px 14px;text-align:right">← swipe left: skip [-] / move</div>
+   </div>
+   <div class="c-low" style="font-size:10.5px;margin-top:6px">tapping the row body opens details / log-with-note</div>
+  </div>
+  <div style="margin-top:16px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px #0008">
+   <span class="c-ok" style="font-weight:700">[✓]</span><span style="flex:1">Drink water <span class="c-mid">· streak 12</span></span><span class="xp">+20 xp</span><span class="c-amb" style="font-weight:700;border-left:1px solid var(--border);padding-left:10px">undo</span>
+  </div>
+  <div class="note">• Only the bracket checkbox toggles completion, with a padded <b>44×44</b> hit area.<br>• Tapping the row body opens the habit (log with note, details).<br>• Every completion shows a <b>3-second toast with undo</b> and the XP earned, in the same bordered-card style as today.<br>• On mobile: swipe right to complete, swipe left to skip or move.<br>• Done rows get a subtle green wash so finished and open habits are easy to tell apart.</div>
+ </div>
+</div></body></html>

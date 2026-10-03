@@ -1,0 +1,33 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css"></head><body>
+<h1 class="t">$ nav --audit</h1><p class="sub">// every page reachable on every screen size; nav labels shouldn't suggest menus that aren't there</p>
+<div class="lbl bad">current desktop top bar: ▾ suggests a dropdown that doesn't exist; the two icons have no labels</div>
+<div class="panel" style="display:flex;align-items:center;gap:22px;background:var(--raised);width:1000px">
+ <span style="border:1px solid var(--amber);border-radius:6px;padding:2px 7px" class="c-amb"><b>Q</b></span><b>Quest</b><span class="c-low" style="font-size:11px">[beta]</span>
+ <span class="c-amb" style="border-bottom:2px solid var(--amber)"><b>habits ▾</b></span><span class="c-mid">stats ▾</span><span class="c-mid">profile ▾</span><span class="c-mid">life grid ▾</span><span class="c-mid">system ▾</span><span class="c-mid">help ▾</span><span style="margin-left:auto" class="c-mid">▤ &nbsp; ▦</span></div>
+<div class="lbl good" style="margin-top:22px">proposed desktop top bar</div>
+<div class="panel" style="display:flex;align-items:center;gap:22px;background:var(--raised);width:1000px">
+ <span style="border:1px solid var(--amber);border-radius:6px;padding:2px 7px" class="c-amb"><b>Q</b></span><b>Quest</b>
+ <span class="c-amb" style="border-bottom:2px solid var(--amber)"><b><span class="c-low" style="font-weight:400">1</span> habits</b></span><span class="c-mid"><span class="c-low">2</span> stats</span><span class="c-mid"><span class="c-low">3</span> profile</span><span class="c-mid"><span class="c-low">4</span> life grid</span>
+ <span style="margin-left:auto" class="c-mid">▤ all habits &nbsp; ▦ planner &nbsp; ⚙ &nbsp; ?</span><span class="pill">: command</span></div>
+<div class="row" style="margin-top:28px">
+ <div><div class="lbl bad">current mobile: life grid + help can't be reached</div>
+  <div class="phone" style="height:200px"><div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;padding:0 4px">[h] Quest <span class="c-mid">▤ ▦ ⚙</span></div>
+  <div class="c-low" style="font-size:11px;padding:30px 8px">• "[h]" here vs "Q" on desktop<br>• icon buttons have no tooltips or labels<br>• life grid &amp; help: not in nav</div>
+  <div class="nav" style="position:absolute;bottom:0;left:12px;right:12px"><span class="on">☑ habits</span><span>stats</span><span>profile</span></div></div></div>
+ <div><div class="lbl good">proposed mobile: 4th "more" tab → sheet</div>
+  <div class="phone" style="height:420px">
+   <div style="position:absolute;inset:0;background:#0008"></div>
+   <div style="position:absolute;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--border);border-radius:16px 16px 0 0;padding:10px 16px 70px">
+    <div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 12px"></div>
+    <div class="hdr" style="margin-bottom:10px"><span class="d">$ </span>more</div>
+    <div class="col" style="gap:0">
+     <div class="tile"><span class="c-amb">◫</span><span class="ttl">life grid<small>// goals, milestones, minimum viable week</small></span></div>
+     <div class="tile"><span class="c-amb">▤</span><span class="ttl">all habits</span></div>
+     <div class="tile"><span class="c-amb">▦</span><span class="ttl">weekly planner</span></div>
+     <div class="tile"><span class="c-amb">⚙</span><span class="ttl">system<small>// settings, backup, passcode</small></span></div>
+     <div class="tile"><span class="c-amb">?</span><span class="ttl">help</span></div>
+    </div></div>
+   <div class="nav" style="position:absolute;bottom:0;left:12px;right:12px;z-index:2"><span>☑ habits</span><span>stats</span><span>profile</span><span class="on">⋯ more</span></div>
+  </div></div>
+ <div class="note" style="margin-top:30px"><b>Changes</b><br>• Remove the <b>▾</b> chevrons, or make them real menus.<br>• Move settings/help next to the right-hand icons and give all icon buttons tooltips or labels.<br>• Mobile gets a 4th <b>more</b> tab, so life grid and help are reachable. This also removes the <code>_index &gt; 2 ? 0</code> workaround in the nav bar.<br>• Use one brand mark everywhere: <b>[Q]</b>.<br>• Optional: show number-key hints (1–4) on desktop to go with the keyboard-shortcuts issue.</div>
+</div></body></html>

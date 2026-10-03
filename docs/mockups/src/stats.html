@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css">
+<style>.hm{display:grid;grid-template-rows:repeat(7,10px);grid-auto-flow:column;grid-auto-columns:10px;gap:3px}.hm i{border-radius:2px}</style></head><body>
+<h1 class="t">$ stats --readable</h1><p class="sub">// numbers that say whether you're getting better, plus a heatmap you can read</p>
+<div class="row">
+ <div style="width:470px"><div class="lbl bad">current</div>
+  <div class="panel"><div class="hdr"><span class="d">$ </span>contributions</div><div style="margin-top:10px" class="hm" id="a"></div>
+   <div style="font-size:10px;margin-top:8px" class="c-low">less ▪▪▪▪▪ more</div>
+   <div class="c-mid" style="font-size:11px;margin-top:8px">tooltip: "10/14: level 3"</div></div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px">
+   <div class="panel"><b class="c-amb" style="font-size:20px">2140</b><div class="c-mid" style="font-size:11px">total xp</div></div>
+   <div class="panel"><b class="c-amb" style="font-size:20px">7</b><div class="c-mid" style="font-size:11px">level</div></div>
+   <div class="panel"><b class="c-amb" style="font-size:20px">183</b><div class="c-mid" style="font-size:11px">completions</div></div>
+   <div class="panel"><b class="c-amb" style="font-size:20px">9d</b><div class="c-mid" style="font-size:11px">best streak</div></div>
+  </div>
+  <div class="note">• No month or weekday labels, so you can't tell which square is which day.<br>• The tooltip shows an internal "level 3" instead of what you did.<br>• The KPIs are all lifetime totals and only go up. Nothing shows whether this week beats last week.</div>
+ </div>
+ <div style="width:520px"><div class="lbl good">proposed</div>
+  <div class="panel"><div class="hdr"><span class="d">$ </span>contributions <span class="c-mid" style="font-weight:400;font-size:11px">// 26 weeks</span></div>
+   <div style="display:flex;gap:6px;margin-top:26px">
+    <div style="display:grid;grid-template-rows:repeat(7,10px);gap:3px;font-size:9px;color:var(--lowNew);line-height:10px"><span>m</span><span></span><span>w</span><span></span><span>f</span><span></span><span></span></div>
+    <div><div style="display:flex;gap:39px;font-size:10px;color:var(--lowNew);margin:-14px 0 4px">
+      <span>may</span><span>jun</span><span>jul</span><span>aug</span><span>sep</span><span>oct</span></div><div class="hm" id="b"></div></div>
+    <div style="position:relative;align-self:flex-end;margin-left:-60px;margin-bottom:22px;background:var(--raised);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:11px;white-space:nowrap;box-shadow:0 6px 16px #0009">tue 30 sep<br><span class="c-ok">5/6 habits</span> · <span class="c-amb">+180xp</span></div>
+   </div></div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px">
+   <div class="panel"><b class="c-amb" style="font-size:20px">78%</b><div class="c-mid" style="font-size:11px">completion 7d</div><div class="c-ok" style="font-size:11px">▲ 12 vs prev</div></div>
+   <div class="panel"><b class="c-amb" style="font-size:20px">4d</b><div class="c-mid" style="font-size:11px">streak</div><div style="font-size:11px;color:var(--lowNew)">best 9d</div></div>
+   <div class="panel"><b class="c-amb" style="font-size:20px">410</b><div class="c-mid" style="font-size:11px">xp this week</div><div style="color:#ff7b72;font-size:11px">▼ 30 vs prev</div></div>
+   <div class="panel"><b class="c-amb" style="font-size:20px">lv 7</b><div class="c-mid" style="font-size:11px">140xp to 8</div><div class="bar" style="margin-top:4px;flex:none;height:4px"><i style="width:62%"></i></div></div>
+  </div>
+  <div class="panel" style="margin-top:10px;font-size:12px"><div class="hdr" style="margin-bottom:6px"><span class="d">$ </span>habits --trend <span class="c-mid" style="font-weight:400;font-size:11px">// last 8 weeks</span></div>
+   <div style="display:grid;grid-template-columns:160px 90px 1fr;row-gap:4px"><span>Drink water</span><span class="c-ok">▅▆▇▇█▇██</span><span class="c-mid">96% 🔥12</span><span>Deep build block</span><span class="c-amb">▂▃▂▅▄▅▆▅</span><span class="c-mid">61% ▲</span><span>Journal</span><span style="color:#ff7b72">▆▅▄▃▃▂▂▁</span><span class="c-mid">22% ▼ needs attention</span></div></div>
+ </div>
+</div>
+<script>
+const c=['#16202E','#0E4429','#186B3B','#26A641','#39D353'];
+function fill(id,o){const e=document.getElementById(id);let s=7;for(let i=0;i<26*7;i++){s=(s*9301+49297)%233280;const l=Math.min(4,Math.floor(s/233280*5*(0.6+i/300)));const x=document.createElement('i');x.style.background=(o&&l==0)?'#1B2738':c[l];if(o&&l==0)x.style.outline='1px solid #26344a';if(o&&i==26*7-5)x.style.outline='2px solid #F5C77E';e.appendChild(x)}}
+fill('a',false);fill('b',true);
+</script></body></html>

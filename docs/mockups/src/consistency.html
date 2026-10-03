@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css"></head><body>
+<h1 class="t">$ lint --design</h1><p class="sub">// three header styles, two chip widgets, emoji next to ASCII. Pick one of each.</p>
+<div class="row">
+ <div style="width:440px"><div class="lbl bad">current: all habits / planner (PageScaffold)</div>
+  <div class="panel" style="padding:16px">
+   <div style="display:flex;gap:10px;align-items:center"><span class="c-mid">←</span><span style="font-size:26px;font-weight:700">All habits</span></div>
+   <div class="c-mid" style="font-size:11px;letter-spacing:.08em;margin:18px 0 6px">MORNING</div>
+   <div class="tile"><span class="ttl">Drink water</span></div>
+   <div class="c-mid" style="font-size:11px;letter-spacing:.08em;margin:14px 0 6px">DEEP WORK</div>
+   <div class="tile"><span class="ttl">Deep build block</span></div>
+  </div>
+  <div class="lbl bad" style="margin-top:18px">current: section headers on home</div>
+  <div class="panel"><div class="sec">🌅 morning <span class="c-low">[2/2]</span></div><div class="sec">💻 deep work <span class="c-low">[0/2]</span></div><div class="sec">🌙 wind down <span class="c-low">[0/1]</span></div></div>
+  <div class="lbl bad" style="margin-top:18px">current: mixed casing</div>
+  <div class="panel" style="display:flex;gap:10px;flex-wrap:wrap"><span class="pill">Save</span><span class="pill">later</span><span class="pill">Delete</span><span class="pill">export</span><span class="pill">Cancel</span><span class="pill">cancel</span><span class="pill">I saved it</span></div>
+ </div>
+ <div style="width:440px"><div class="lbl good">proposed: one header language everywhere</div>
+  <div class="panel" style="padding:16px">
+   <div style="display:flex;gap:10px;align-items:center"><span class="c-mid">←</span><span class="hdr" style="font-size:15px"><span class="d">$ </span>habits --all</span></div>
+   <div class="cmt">// 14 habits · 3 archived</div>
+   <div class="sec" style="margin-top:12px"><span class="c-amb">▸</span> morning <span class="c-low" style="font-weight:400">(2)</span></div>
+   <div class="tile"><span class="ttl">Drink water</span></div>
+   <div class="sec"><span class="c-amb">▸</span> deep work <span class="c-low" style="font-weight:400">(1)</span></div>
+   <div class="tile"><span class="ttl">Deep build block</span></div>
+  </div>
+  <div class="lbl good" style="margin-top:18px">proposed: mono glyphs, tinted by time of day</div>
+  <div class="panel"><div class="sec"><span style="color:#F5C77E">◒</span> morning <span class="c-low">[2/2]</span></div><div class="sec"><span style="color:#7aa2f7">⌘</span> deep work <span class="c-low">[0/2]</span></div><div class="sec"><span style="color:#bb9af7">☾</span> wind down <span class="c-low">[0/1]</span></div></div>
+  <div class="lbl good" style="margin-top:18px">proposed: lowercase verbs, one rule</div>
+  <div class="panel" style="display:flex;gap:10px;flex-wrap:wrap"><span class="pill on">save</span><span class="pill">later</span><span class="pill" style="color:#ff7b72;border-color:#5a2a2a">delete</span><span class="pill">export</span><span class="pill">cancel</span><span class="pill">i saved it</span></div>
+ </div>
+ <div class="note" style="margin-top:30px;max-width:280px"><b>Code-level</b><br>• Retire <code>PageScaffold</code> + <code>SectionHeader</code> (26px title, UPPERCASE), or restyle them to use <code>TerminalHeader</code>.<br>• Merge <code>_Chip</code> (stats) and <code>_WindowChip</code> (home) into one <code>TerminalChip</code>.<br>• Replace the emoji from <code>sectionEmojiOrDot</code> with mono glyphs. The emoji render as colour bitmaps and clash with the type.<br>• Move all button copy into <code>AppText</code>, lowercase.</div>
+</div></body></html>

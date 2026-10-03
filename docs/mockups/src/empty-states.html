@@ -1,0 +1,38 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css"></head><body>
+<h1 class="t">$ states --empty --done</h1><p class="sub">// the first-run screen and the "all done" moment are the two places that most need personality</p>
+<div class="row">
+ <div style="width:330px"><div class="lbl bad">current: empty day</div>
+  <div class="panel"><div class="hdr"><span class="d">$ </span>habits</div><div class="cmt">// the checkbox doesn't care if you feel like it.</div>
+   <div class="c-mid" style="text-align:center;padding:40px 0">Nothing scheduled today.</div>
+   <div style="display:flex;gap:12px;font-size:12px" class="c-amb"><span>+ habit</span><span>+ routine</span><span style="margin-left:auto">attach existing</span></div></div>
+  <div class="lbl bad" style="margin-top:18px">current: everything done</div>
+  <div class="panel"><div class="sec">◒ morning <span class="c-low">[2/2]</span></div><div class="tile"><span class="br done">[✓]</span><span class="ttl c-mid">Drink water</span></div><div class="tile"><span class="br done">[✓]</span><span class="ttl c-mid">Stretch</span></div><div class="c-low" style="font-size:11px;margin-top:6px">(no change, apart from the occasional perfect-day toast)</div></div>
+ </div>
+ <div style="width:360px"><div class="lbl good">proposed: first run / empty day</div>
+  <div class="panel"><div class="hdr"><span class="d">$ </span>habits</div>
+   <pre style="font-family:inherit;font-size:12px;line-height:1.6;margin:14px 0;color:var(--mid)"><span class="c-amb">$</span> quest init
+<span class="c-ok">✓</span> database ready (local, offline)
+<span class="c-low">…</span> no habits yet
+
+<span class="c-hi">start with one small thing:</span></pre>
+   <div style="display:flex;flex-direction:column;gap:6px">
+    <span class="pill">[ ] drink a glass of water  <span class="c-amb">+ add</span></span>
+    <span class="pill">[ ] 10 min walk  <span class="c-amb">+ add</span></span>
+    <span class="pill">[ ] read 10 pages  <span class="c-amb">+ add</span></span>
+   </div>
+   <div style="display:flex;gap:12px;font-size:12px;margin-top:14px" class="c-amb"><span>+ custom habit</span><span>apply standard week</span></div>
+  </div></div>
+ <div style="width:360px"><div class="lbl good">proposed: day complete</div>
+  <div class="panel" style="border-color:#2a5a3c">
+   <pre style="font-family:inherit;font-size:12px;line-height:1.6;color:var(--mid)"><span class="c-amb">$</span> habits --today
+<span class="c-ok">[✓] 5/5 complete</span>  <span class="c-amb">+240xp</span>  <span class="c-st">🔥 5d</span>
+
+<span class="c-ok">██████████</span> 100%
+
+<span class="c-low">// "We are what we repeatedly do."</span>
+</pre>
+   <div class="c-mid" style="font-size:11.5px;margin-top:6px">▸ 5 done <span class="c-low">(tap to expand)</span></div>
+   <div style="display:flex;gap:12px;font-size:12px;margin-top:12px" class="c-amb"><span>plan tomorrow ›</span><span class="c-mid">+ bonus habit</span></div>
+  </div>
+  <div class="note">• Done sections collapse automatically, so a finished day reads as finished.<br>• The quote moves here from the always-visible status card.<br>• Tomorrow's plan is one tap away.</div></div>
+</div></body></html>

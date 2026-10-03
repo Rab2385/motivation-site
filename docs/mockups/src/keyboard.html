@@ -1,0 +1,26 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css"></head><body>
+<h1 class="t">$ keys --vim</h1><p class="sub">// a terminal UI that can't be driven from the keyboard. KeyboardHintBar and PromptLine already exist in terminal_widgets.dart but aren't used anywhere.</p>
+<div style="width:1040px;background:var(--bg);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:relative">
+ <div style="display:flex;gap:22px;align-items:center;background:var(--raised);padding:12px 18px;border-bottom:1px solid var(--hair)"><span style="border:1px solid var(--amber);border-radius:6px;padding:2px 7px" class="c-amb"><b>Q</b></span><b>Quest</b><span class="c-amb" style="border-bottom:2px solid var(--amber)"><b>habits</b></span><span class="c-mid">stats</span><span class="c-mid">profile</span><span class="c-mid">life grid</span></div>
+ <div style="padding:16px 18px;display:flex;gap:14px">
+  <div class="panel" style="flex:1">
+   <div style="font-size:12px;margin-bottom:10px"><span class="c-ok">you</span><span class="c-low">@Quest</span> <span class="c-amb">$</span> habits --today</div>
+   <div class="sec">◒ morning <span class="c-low">[1/2]</span></div>
+   <div class="tile"><span class="br done">[✓]</span><span class="ttl c-mid">Drink water</span><span class="xp">+20</span></div>
+   <div class="tile" style="background:rgba(227,166,79,.10);border-left:2px solid var(--amber);margin-left:-12px;padding-left:10px"><span class="c-amb" style="font-weight:700">›</span><span class="br">[ ]</span><span class="ttl">Stretch 10 min<small>// press x to check, s to skip</small></span><span class="xp">+20</span></div>
+   <div class="sec">⌘ deep work <span class="c-low">[0/2]</span></div>
+   <div class="tile"><span class="br">[ ]</span><span class="ttl">Deep build block</span><span class="xp">+60</span></div>
+   <div class="tile"><span class="br">[~]</span><span class="ttl">Read<small>12 / 30 pages</small></span><span class="xp">+40</span></div>
+  </div>
+  <div style="width:400px;background:var(--card);border:1px solid var(--amber);border-radius:8px;box-shadow:0 12px 40px #000c;align-self:flex-start">
+   <div style="padding:10px 12px;border-bottom:1px solid var(--border)"><span class="c-amb">:</span> new hab<span style="background:var(--amberB);color:#000">&nbsp;</span></div>
+   <div style="padding:6px 0;font-size:12px">
+    <div style="padding:6px 12px;background:rgba(227,166,79,.14)"><span class="c-amb">+</span> new habit <span style="float:right" class="c-mid">n</span></div>
+    <div style="padding:6px 12px"><span class="c-amb">↻</span> new routine <span style="float:right" class="c-mid">N</span></div>
+    <div style="padding:6px 12px"><span class="c-amb">▤</span> all habits <span style="float:right" class="c-mid">g a</span></div>
+    <div style="padding:6px 12px"><span class="c-amb">▦</span> weekly planner <span style="float:right" class="c-mid">g p</span></div>
+   </div></div>
+ </div>
+ <div style="background:var(--raised);padding:8px 18px;font-size:11.5px;display:flex;gap:18px;border-top:1px solid var(--hair)">
+  <span><kbd>j/k</kbd> <span class="c-low">move</span></span><span><kbd>x</kbd> <span class="c-low">check</span></span><span><kbd>s</kbd> <span class="c-low">skip</span></span><span><kbd>e</kbd> <span class="c-low">edit</span></span><span><kbd>h/l</kbd> <span class="c-low">prev/next day</span></span><span><kbd>t</kbd> <span class="c-low">today</span></span><span><kbd>1-4</kbd> <span class="c-low">tabs</span></span><span><kbd>:</kbd> <span class="c-low">command</span></span><span><kbd>?</kbd> <span class="c-low">help</span></span></div>
+</div></body></html>

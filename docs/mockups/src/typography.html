@@ -1,0 +1,43 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css"></head><body>
+<h1 class="t">$ fonts --bundle &amp;&amp; contrast --fix</h1><p class="sub">// the whole aesthetic depends on monospace type, but no font is bundled</p>
+<div class="row">
+ <div style="width:400px"><div class="lbl bad">risk: system fallback (Flutter web can't use OS fonts by name)</div>
+  <div class="panel sans">
+   <div class="hdr"><span class="d">$ </span>habits</div><div class="cmt">// the checkbox doesn't care if you feel like it.</div>
+   <div class="tile"><span class="br done">[✓]</span><span class="ttl c-mid">Drink water</span><span class="xp">+20</span></div>
+   <div class="tile"><span class="br">[ ]</span><span class="ttl">Deep build block</span><span class="xp">+60</span></div>
+   <div class="tile"><span class="br">[~]</span><span class="ttl">Read</span><span class="xp">+40</span></div>
+   <div style="font-size:12px;margin-top:8px">level: 7 [140xp to next]<br><span class="c-mid">[####------]  40%</span></div>
+  </div>
+  <div class="note">The theme sets <code>fontFamily: 'monospace'</code> plus a fallback list ('JetBrains Mono', 'Fira Code', …), but <b>pubspec.yaml declares no fonts</b>. On web (CanvasKit) and Android, those names don't resolve to installed fonts. Text can fall back to Roboto, so <code>[ ]</code> / <code>[✓]</code> don't line up and the "terminal" look is lost.</div>
+ </div>
+ <div style="width:400px"><div class="lbl good">bundled JetBrains Mono (OFL, ~4 weights)</div>
+  <div class="panel">
+   <div class="hdr"><span class="d">$ </span>habits</div><div class="cmt">// the checkbox doesn't care if you feel like it.</div>
+   <div class="tile"><span class="br done">[✓]</span><span class="ttl c-mid">Drink water</span><span class="xp">+20</span></div>
+   <div class="tile"><span class="br">[ ]</span><span class="ttl">Deep build block</span><span class="xp">+60</span></div>
+   <div class="tile"><span class="br">[~]</span><span class="ttl">Read</span><span class="xp">+40</span></div>
+   <div style="font-size:12px;margin-top:8px">level: 7 [140xp to next]<br><span class="c-mid">[####------]  40%</span></div>
+  </div>
+  <div class="note">Add <code>assets/fonts/JetBrainsMono-*.ttf</code> and a <code>fonts:</code> entry, then set <code>fontFamily: 'JetBrains Mono'</code>. It looks the same on every platform, works offline (fits "local-first"), and the brackets line up.</div>
+ </div>
+</div>
+<h1 class="t" style="margin-top:34px;font-size:15px">contrast + size floor</h1>
+<div class="row" style="margin-top:12px">
+ <div class="panel" style="width:400px">
+  <div class="lbl bad">textLow #5C6577 · 3.1:1 on card · used at 10–11px</div>
+  <div style="font-size:10px;color:var(--low)">[1/3] · less ▪▪▪ more · // skipped</div>
+  <div style="font-size:10.5px;color:var(--low);margin-top:6px">best day: tue (82%)   worst day: sun (31%)</div>
+  <div style="margin-top:10px;display:flex;gap:3px;align-items:center">
+   <i style="width:10px;height:10px;background:var(--h0);border-radius:2px"></i><i style="width:10px;height:10px;background:var(--h0);border-radius:2px"></i><i style="width:10px;height:10px;background:var(--h2);border-radius:2px"></i><i style="width:10px;height:10px;background:var(--h0);border-radius:2px"></i>
+   <span class="c-low" style="font-size:10px;margin-left:6px">empty cells 1.1:1, almost invisible</span></div>
+ </div>
+ <div class="panel" style="width:400px">
+  <div class="lbl good">textLow #78839A · 4.8:1 · min 11.5px</div>
+  <div style="font-size:11.5px;color:var(--lowNew)">[1/3] · less ▪▪▪ more · // skipped</div>
+  <div style="font-size:11.5px;color:var(--lowNew);margin-top:6px">best day: tue (82%)   worst day: sun (31%)</div>
+  <div style="margin-top:10px;display:flex;gap:3px;align-items:center">
+   <i style="width:10px;height:10px;background:#1B2738;border:1px solid #26344a;border-radius:2px"></i><i style="width:10px;height:10px;background:#1B2738;border:1px solid #26344a;border-radius:2px"></i><i style="width:10px;height:10px;background:var(--h2);border-radius:2px"></i><i style="width:10px;height:10px;background:#1B2738;border:1px solid #26344a;border-radius:2px"></i>
+   <span style="font-size:11px;color:var(--lowNew);margin-left:6px">empty cells get a hairline outline</span></div>
+ </div>
+</div></body></html>
