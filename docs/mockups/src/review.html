@@ -1,0 +1,40 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css"></head><body>
+<h1 class="t">$ review --weekly --remember</h1><p class="sub">// reviews are saved but never shown again. Make them shape the next week.</p>
+<div class="row">
+ <div style="width:420px"><div class="lbl good">1 · review dialog, pre-filled with the week</div>
+  <div class="panel" style="padding:16px">
+   <div class="hdr"><span class="d">$ </span>weekly review <span class="c-mid" style="font-weight:400;font-size:11px">// 29 sep – 5 oct</span></div>
+   <div style="background:var(--inset);border:1px solid var(--border);border-radius:6px;padding:10px;margin:12px 0;font-size:11.5px;line-height:1.6">
+    <span class="c-mid">completion</span> <b class="c-amb">78%</b> <span class="c-ok">▲12</span> · <span class="c-mid">perfect days</span> <b>3/7</b><br>
+    <span class="c-mid">best</span> tue (100%) · <span class="c-mid">worst</span> sat (33%)<br>
+    <span class="c-ok">↑ Drink water 7/7</span> · <span style="color:#ff7b72">↓ Journal 1/5</span><br>
+    <span class="c-mid">last week's focus:</span> "3 workouts" → <b class="c-amb">2/3</b>
+   </div>
+   <div style="font-size:12px;margin-bottom:4px">what went well?</div><div class="pill" style="display:block;height:34px;margin-bottom:10px">deep build every weekday</div>
+   <div style="font-size:12px;margin-bottom:4px">what felt hard?</div><div class="pill" style="display:block;height:34px;margin-bottom:10px">journal at night, too tired</div>
+   <div style="font-size:12px;margin-bottom:4px">what matters next week?</div><div class="pill on" style="display:block;height:34px">journal right after dinner</div>
+   <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:12px;font-size:12px"><span class="c-mid">later</span><span class="pill on">save</span></div>
+  </div></div>
+ <div style="width:380px"><div class="lbl good">2 · next focus pinned on home all week</div>
+  <div class="panel" style="border-left:3px solid var(--amber)">
+   <div style="font-size:11px" class="c-mid">// this week's focus (from your review)</div>
+   <div style="margin-top:4px;font-weight:700">▸ journal right after dinner</div>
+   <div style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:11px"><span class="c-mid">Journal</span><div class="bar"><i style="width:40%"></i></div><span class="c-amb">2/5</span></div>
+  </div>
+  <div class="lbl good" style="margin-top:22px">3 · review log</div>
+  <div class="panel">
+   <div class="hdr"><span class="d">$ </span>reviews --log</div>
+   <div class="tile" style="flex-direction:column;gap:2px"><div><b>w40</b> <span class="c-mid">· 78% ▲12</span></div><div style="font-size:11px"><span class="c-ok">+</span> deep build every weekday</div><div style="font-size:11px"><span style="color:#ff7b72">−</span> journal at night</div><div style="font-size:11px"><span class="c-amb">→</span> journal after dinner</div></div>
+   <div class="tile" style="flex-direction:column;gap:2px"><div><b>w39</b> <span class="c-mid">· 66% ▼4</span></div><div style="font-size:11px"><span class="c-ok">+</span> 3 workouts</div><div style="font-size:11px"><span style="color:#ff7b72">−</span> phone in deep work</div><div style="font-size:11px"><span class="c-amb">→</span> 3 workouts again</div></div>
+   <div class="c-mid" style="font-size:11px;margin-top:6px">▾ 6 more weeks</div>
+  </div></div>
+ <div style="width:330px"><div class="lbl good">4 · optional: assistant suggestion</div>
+  <div class="panel" style="border-color:var(--amberD)">
+   <div class="hdr"><span class="d">$ </span>assistant --suggest <span class="c-mid" style="font-weight:400;font-size:11px">// proposal</span></div>
+   <div style="font-size:11.5px;line-height:1.6;margin-top:8px">Journal failed 4/5 at night.<br>Proposed for next week:</div>
+   <div class="tile"><span class="c-ok">~</span><span class="ttl">Journal: move <b>wind down → evening</b><small>// matches your stated focus</small></span></div>
+   <div class="tile"><span class="c-ok">~</span><span class="ttl">Journal: shrink to <b>3 lines</b></span></div>
+   <div style="display:flex;gap:10px;margin-top:10px;font-size:12px"><span class="pill on">review proposal</span><span class="c-mid" style="padding-top:4px">dismiss</span></div>
+   <div class="c-low" style="font-size:10.5px;margin-top:8px">uses the existing Proposal → PlanService flow, nothing applies without review</div>
+  </div></div>
+</div></body></html>

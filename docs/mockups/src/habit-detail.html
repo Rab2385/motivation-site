@@ -1,0 +1,38 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css">
+<style>.hm{display:grid;grid-template-rows:repeat(7,9px);grid-auto-flow:column;grid-auto-columns:9px;gap:2px}.hm i{border-radius:2px}</style></head><body>
+<h1 class="t">$ habit --show "Read"</h1><p class="sub">// one place per habit: history, why, notes; plus faster logging and a 5-second end-of-day check-in</p>
+<div class="row">
+ <div style="width:420px"><div class="lbl good">1 · habit detail page</div>
+  <div class="panel" style="padding:16px">
+   <div style="display:flex;gap:8px;align-items:center"><span class="c-mid">←</span><span class="hdr" style="font-size:15px"><span class="d">$ </span>Read</span><span class="c-mid" style="margin-left:auto;font-size:11px">edit</span></div>
+   <div class="cmt">// because: "one good idea a day"</div>
+   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0">
+    <div class="panel" style="padding:8px"><b class="c-st">🔥 6</b><div class="c-mid" style="font-size:11px">streak · best 18</div></div>
+    <div class="panel" style="padding:8px"><b class="c-amb">74%</b><div class="c-mid" style="font-size:11px">last 30d</div></div>
+    <div class="panel" style="padding:8px"><b>21.4</b><div class="c-mid" style="font-size:11px">avg pages/day</div></div>
+   </div>
+   <div class="hm" id="h"></div>
+   <div class="hdr" style="margin:14px 0 6px;font-size:12px">notes</div>
+   <div style="font-size:11.5px;line-height:1.6"><span class="c-mid">2 oct</span> finished "Atomic Habits" ch.4<br><span class="c-mid">29 sep</span> <span style="color:var(--lowNew)">[~] 12/30, train ride too short</span></div>
+  </div></div>
+ <div style="width:380px"><div class="lbl good">2 · quick increments on quantity habits</div>
+  <div class="panel">
+   <div class="tile" style="align-items:center"><span class="br">[~]</span><span class="ttl">Read<small>12 / 30 pages</small><div class="bar" style="margin-top:4px;height:4px;flex:none"><i style="width:40%"></i></div></span><span class="pill">+5</span><span class="pill">+10</span><span class="pill on">✓ 30</span></div>
+   <div class="tile" style="align-items:center"><span class="br">[~]</span><span class="ttl">Water<small>4 / 8 glasses</small><div class="bar" style="margin-top:4px;height:4px;flex:none"><i style="width:50%"></i></div></span><span class="pill">+1</span><span class="pill on">✓ 8</span></div>
+  </div>
+  <div class="note">One tap logs progress without opening the log sheet. Long-press still opens it to enter an exact amount or a note.</div>
+  <div class="lbl good" style="margin-top:22px">3 · end-of-day check-in (optional)</div>
+  <div class="panel">
+   <div style="font-size:12px">energy today?</div>
+   <div style="display:flex;gap:6px;margin:8px 0"><span class="pill">1</span><span class="pill">2</span><span class="pill">3</span><span class="pill on">4</span><span class="pill">5</span></div>
+   <div class="pill" style="display:block;color:var(--lowNew)">// one line about today (optional)</div>
+  </div></div>
+ <div style="width:330px;margin-top:22px"><div class="lbl good">→ in stats after a few weeks</div>
+  <div class="panel" style="font-size:12px;line-height:1.7">
+   <div class="hdr" style="margin-bottom:6px"><span class="d">$ </span>insights</div>
+   <span class="c-amb">▸</span> energy ≥4: <b>91%</b> completion<br><span class="c-amb">▸</span> energy ≤2: <b>48%</b> completion<br><span class="c-amb">▸</span> Journal fails most after 22:00<br><span class="c-amb">▸</span> deep work best on tue/wed
+  </div>
+  <div class="note">Mood and energy are stored as a small per-day record next to completions, so the weekly review can show them as well.</div></div>
+</div>
+<script>const c=['#1B2738','#0E4429','#186B3B','#26A641','#39D353'];const e=document.getElementById('h');let s=3;for(let i=0;i<26*7;i++){s=(s*9301+49297)%233280;const l=Math.min(4,Math.floor(s/233280*5*(0.5+i/260)));const x=document.createElement('i');x.style.background=c[l];e.appendChild(x)}</script>
+</body></html>
