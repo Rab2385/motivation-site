@@ -319,7 +319,7 @@ class _MobileTopBar extends StatelessWidget {
         child: Row(
           children: [
             Text(
-              '[h] ${AppText.appName}',
+              '[Q] ${AppText.appName}',
               style: const TextStyle(
                 fontFamilyFallback: AppTheme.mono,
                 color: AppTheme.textHigh,

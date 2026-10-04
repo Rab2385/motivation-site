@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// The "init.Habits"-style terminal look: near-black ground, monospace type,
+/// Quest's terminal look: near-black ground, monospace type,
 /// amber accent, GitHub-green contribution heatmap. Dark-only by design.
 class AppTheme {
   const AppTheme._();

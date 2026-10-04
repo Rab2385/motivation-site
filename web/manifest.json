@@ -1,12 +1,12 @@
 {
-    "name": "motivation",
-    "short_name": "motivation",
+    "name": "Quest — habit tracker",
+    "short_name": "Quest",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#0A0E17",
+    "theme_color": "#0A0E17",
+    "description": "Local-first, gamified habit tracker. Your data stays on this device.",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

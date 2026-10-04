@@ -1,14 +1,16 @@
 # Quest – Architecture
 
-Gamified, local-first habit tracker ("Quest") with a **Wochenplanung** (weekly
-planning) feature. Flutter Web (also builds for Windows). No account, no
+Gamified, local-first habit tracker ("Quest") with a weekly planner.
+Flutter Web (also builds for Windows). Single user: no account, no login, no
 server, works fully offline. Persistence is Sembast over IndexedDB on web, a
 file on native.
 
-The visual direction is a dark "midnight fantasy" theme with parchment-gold
-accents, a compass-rose mark, a painted mountain atmosphere (`AtmosphereBackground`,
-`GoldRing`, `CompassMark` in `lib/theme/atmosphere.dart`) and motivational
-German quotes (`lib/l10n/quotes.dart`). The Dart package is still `motivation`.
+The visual direction is a dark terminal look (`lib/theme/app_theme.dart`):
+near-black ground, monospace type, amber accent, `$ header` / `// comment`
+section headings (`lib/widgets/terminal_widgets.dart`), `[ ]` / `[✓]`
+bracket checkboxes and a GitHub-green contribution heatmap. Dark-only. The
+mark is a boxed amber `Q`. Short `// comment`-style quotes live in
+`lib/l10n/quotes.dart`. The Dart package is still `motivation`.
 
 This document is the source of truth for the domain model and the rules that
 were agreed during design. Implementation follows it; where code and doc
@@ -29,7 +31,7 @@ disagree, fix one of them deliberately.
 | XP | Manual, with a difficulty-derived default. Snapshotted at completion; editable with recalculation. |
 | Past | Read-only. Completion only on the actual current day. (Exception: correcting a past completion's awarded XP.) |
 | AI | V1 builds the **Proposal** seam and routes every mutation through `PlanService`. No provider, no keys, no network. |
-| Language | German UI, English code/identifiers/commits. |
+| Language | English UI (lowercase, CLI-menu style), all copy in `lib/l10n/app_text.dart`; English code/identifiers/commits. |
 
 ---
 
@@ -86,14 +88,9 @@ completion: Completion?
 `id`, `createdAt`, `source`, `rationale`, `status`,
 `operations: List<PlanOperation>`.
 
-### 2.8a `Reward` (`lib/models/reward.dart`)
-A self-chosen treat that unlocks at a level. `id`, `title`, `description`,
-`iconKey`, `requiredLevel`, `redeemedCount`, `lastRedeemedAt`, `createdAt`.
-Unlocked when `currentLevel >= requiredLevel`. Redeeming has **no XP cost** –
-it just records that the user took the break (`redeemedCount++`). Seeded with
-five defaults on first run (`rewardsSeeded` settings flag). CRUD +
-`redeemReward` go through `PlanService`; the controller emits a toast when a
-reward crosses its unlock level.
+### 2.8a `Reward` (removed)
+Level-gated rewards existed in the earlier "Quest" design and were removed in
+the terminal redesign; there is no `Reward` model any more.
 
 ### 2.9 `Achievement` unlock
 `achievementId`, `unlockedAt`. Definitions are code, unlocks are data.
@@ -122,7 +119,13 @@ Lighthouse project.
 Backup: `BackupService` serialises every store into one versioned JSON
 document (`formatVersion`, `appVersion`, `createdAt`, `data`). Import
 validates the envelope, writes a safety backup to `settings`, then replaces
-all stores in a transaction.
+all stores in a transaction. Device-local settings (`localOnlySettings`: the
+safety copy, `lastBackupAt`, `backupSnoozedUntil`, and passcode keys left by
+the removed lock screen) are never exported; an import keeps the current
+`lastBackupAt` / snooze. `downloadBackup` saves a dated
+`quest-backup-YYYY-MM-DD.json` (`backup_file*.dart`: browser download on
+web, Downloads folder on native), and `domain/backup_reminder.dart` decides
+when home shows the backup nudge.
 
 ---
 
@@ -260,25 +263,29 @@ Rules encoded by the architecture:
 that call into `lib/domain/`, and forwards writes to `PlanService` then
 updates its lists.
 
-Navigation (`MotivationShell`): NavigationRail on wide, NavigationBar on
-narrow. Destinations:
+Navigation (`MotivationShell`): a top bar with text tabs on wide screens
+(≥ 760 px), a bottom `NavigationBar` (habits · stats · profile) plus top-bar
+icons on narrow ones. The app opens straight into the shell — there is no
+lock screen.
 
-| DE label | Route content |
+| Tab | Content |
 | --- | --- |
-| Dashboard | greeting + date + quote; hero card (level ring, XP bar, streak/total/encouragement chips, mountain atmosphere); "Heutige Aufgaben" card with per-row motivational subtitle and a "Heute verdient / perfekte Tagesbilanz" footer; "Freigeschaltete Belohnungen" card; "Wochenfortschritt" card (7-day bars + tasks/XP/streak mini-stats with week-over-week deltas) |
-| Heute | focused quest list for today, tap-to-complete with optional note/amount |
-| Wochenplanung | two-week board, per-day planned XP + workload bar, add/attach/copy/move, quota chips, template save/apply |
-| Gewohnheiten | recurring definitions: schedule, current/best streak, completion rate, pause/archive |
-| Belohnungen | reward grid, redeem when unlocked, add/edit; level-gated with progress bars |
-| Statistik | core charts |
-| Erfolge | achievement grid |
-| Einstellungen | day targets, categories, backup export/import, clear data |
+| habits | three-column dashboard on wide screens: status, weekly review, backup nudge, 90-day focus, calendar and heatmap · the day's habits grouped by section · a closeable `stats --overview` panel. Stacks into one column on phones. |
+| stats | window chips (7d/30d/90d/all), KPI tiles, XP by category, day-of-week rates, 26-week heatmap |
+| profile | level, XP progress, achievement grid |
+| life grid | central goal, minimum viable week, life areas with milestones |
+| system | general (name, birthday, reminders, review day) · gamification · data (categories, backup, clear) · about |
+| help | about the app |
+
+All habits (`AllHabitsPage`) and the weekly planner (`WeekPlanPage`) open as
+pushed pages from the top-bar icons.
 
 Quest list order everywhere: incomplete first → category sort order → XP
 desc; completed collapse to the bottom.
 
-Visual direction: playful gamified – XP bars, level badges, quest cards,
-category colour accents, celebratory feedback on completion and unlocks.
+Visual direction: gamified terminal – XP and progress as bracket bars,
+streak flames, category colour accents, toasts on perfect days and
+achievement unlocks.
 
 ---
 
