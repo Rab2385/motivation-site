@@ -13,10 +13,26 @@ class BackupService {
   final MotivationDatabase _db;
 
   static const int formatVersion = 1;
+
+  /// Settings that belong to this device and never travel in a backup file:
+  /// the passcode/recovery-code hashes, and the import safety copy (which
+  /// would otherwise nest a full older backup inside every export).
+  static const Set<String> deviceOnlySettings = {
+    'appPasscode',
+    'appRecoveryCode',
+    '__safetyBackup',
+  };
   static const String _appVersion = '0.1.0';
 
   Future<String> exportJson() async {
     final data = await _db.exportData();
+    final settings = data['settings'];
+    if (settings is Map) {
+      data['settings'] = {
+        for (final entry in settings.entries)
+          if (!deviceOnlySettings.contains(entry.key)) entry.key: entry.value,
+      };
+    }
     final envelope = {
       'formatVersion': formatVersion,
       'appVersion': _appVersion,
@@ -56,13 +72,33 @@ class BackupService {
 
   /// Imports a validated envelope. Writes the current data to
   /// `settings['__safetyBackup']` first.
+  ///
+  /// The device's passcode is kept as it is: a backup never sets, replaces
+  /// or removes it, even an older backup that still carries one.
   Future<void> importValidated(Map<String, Object?> envelope) async {
     final current = await _db.exportData();
-    await _db.saveSetting('__safetyBackup', jsonEncode({
+    final currentSettings =
+        (current['settings'] as Map?)?.cast<String, Object?>() ?? const {};
+    final safetyBackup = jsonEncode({
       'createdAt': DateTime.now().toIso8601String(),
       'data': current,
-    }));
-    await _db.replaceAll((envelope['data'] as Map).cast<String, Object?>());
+    });
+    await _db.saveSetting('__safetyBackup', safetyBackup);
+
+    final data = Map<String, Object?>.of(
+      (envelope['data'] as Map).cast<String, Object?>(),
+    );
+    final settings = Map<String, Object?>.of(
+      (data['settings'] as Map?)?.cast<String, Object?>() ?? const {},
+    );
+    settings.removeWhere((key, _) => deviceOnlySettings.contains(key));
+    for (final key in const ['appPasscode', 'appRecoveryCode']) {
+      final keep = currentSettings[key];
+      if (keep != null) settings[key] = keep;
+    }
+    settings['__safetyBackup'] = safetyBackup;
+    data['settings'] = settings;
+    await _db.replaceAll(data);
   }
 }
 

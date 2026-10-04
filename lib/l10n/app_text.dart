@@ -206,7 +206,8 @@ class AppText {
   static const showAtmosphereLabel = 'ambient background';
   static const showAtmosphereHint = 'subtle background texture on cards.';
   static const aboutText =
-      'Quest is a local-first, gamified habit tracker. Your data stays on this device — no account, no cloud, works offline.';
+      'Quest is a local-first, gamified habit tracker. Your data stays on this device — no account, no cloud, works offline. '
+      'The passcode keeps others out of the app; it does not encrypt the stored data.';
   static const perfectDayBonusToast = 'Perfect day!';
 
   static const dayTargets = 'daily xp targets';

@@ -26,6 +26,7 @@ import '../models/weight_entry.dart';
 import '../services/backup_service.dart';
 import '../services/plan_service.dart';
 import '../util/dates.dart';
+import '../util/passcode_hash.dart';
 
 /// The single in-memory hub. Holds the loaded lists, exposes read selectors
 /// backed by `lib/domain/`, and forwards every write to [PlanService].
@@ -34,7 +35,7 @@ class MotivationController extends ChangeNotifier {
 
   final MotivationDatabase _database;
   final BackupService _backup;
-  late final PlanService _plan;
+  late PlanService _plan; // rebuilt by initialize(), e.g. after a backup import
 
   final List<TaskCategory> _categories = [];
   final List<TaskDefinition> _definitions = [];
@@ -49,14 +50,14 @@ class MotivationController extends ChangeNotifier {
   List<int> _dayTargetXp = List.of(defaultDayTargetXp);
   String _userName = '';
   DateTime? _userBirthday;
-  String _appPasscode = '';
-  String _appRecoveryCode = '';
+  // Salted hashes (see util/passcode_hash.dart), never the plain values.
+  String _appPasscodeHash = '';
+  String _appRecoveryCodeHash = '';
   String _lastRolloverKey = '';
   final Set<String> _dismissedOverloadHints = {};
 
-  bool get hasAppPasscode => _appPasscode.isNotEmpty;
-  bool get hasAppRecoveryCode => _appRecoveryCode.isNotEmpty;
-  String get appRecoveryCode => _appRecoveryCode;
+  bool get hasAppPasscode => _appPasscodeHash.isNotEmpty;
+  bool get hasAppRecoveryCode => _appRecoveryCodeHash.isNotEmpty;
   String get userName => _userName.trim();
   DateTime? get userBirthday => _userBirthday;
   bool get hasUserName => userName.isNotEmpty;
@@ -141,8 +142,8 @@ class MotivationController extends ChangeNotifier {
     _userBirthday = birthdayRaw != null && birthdayRaw.isNotEmpty
         ? DateTime.tryParse(birthdayRaw)
         : null;
-    _appPasscode = settings['appPasscode'] as String? ?? '';
-    _appRecoveryCode = settings['appRecoveryCode'] as String? ?? '';
+    _appPasscodeHash = await _loadSecretHash(settings, 'appPasscode');
+    _appRecoveryCodeHash = await _loadSecretHash(settings, 'appRecoveryCode');
     final storedTargets = settings['dayTargetXp'];
     if (storedTargets is List && storedTargets.length == 7) {
       _dayTargetXp = [for (final t in storedTargets) (t as num).toInt()];
@@ -233,7 +234,7 @@ class MotivationController extends ChangeNotifier {
   }
 
   String generateRecoveryCode() {
-    final random = Random();
+    final random = Random.secure();
     final first = random.nextInt(900000) + 100000;
     final second = random.nextInt(900000) + 100000;
     return 'QUEST-$first-$second';
@@ -243,20 +244,22 @@ class MotivationController extends ChangeNotifier {
     final normalized = passcode.trim();
     if (normalized.isEmpty) return;
     final code = (recoveryCode ?? generateRecoveryCode()).trim();
-    _appPasscode = normalized;
-    _appRecoveryCode = code;
-    await _database.saveSetting('appPasscode', normalized);
-    await _database.saveSetting('appRecoveryCode', code);
+    _appPasscodeHash = hashSecret(normalized);
+    _appRecoveryCodeHash = hashSecret(code);
+    await _database.saveSetting('appPasscode', _appPasscodeHash);
+    await _database.saveSetting('appRecoveryCode', _appRecoveryCodeHash);
   }
 
   Future<bool> validateAppPasscode(String passcode) async {
     final normalized = passcode.trim();
-    return _appPasscode.isNotEmpty && normalized == _appPasscode;
+    return _appPasscodeHash.isNotEmpty &&
+        verifySecret(normalized, _appPasscodeHash);
   }
 
   Future<bool> validateRecoveryCode(String recoveryCode) async {
     final normalized = recoveryCode.trim();
-    return _appRecoveryCode.isNotEmpty && normalized == _appRecoveryCode;
+    return _appRecoveryCodeHash.isNotEmpty &&
+        verifySecret(normalized, _appRecoveryCodeHash);
   }
 
   Future<void> resetAppPasscode({
@@ -271,15 +274,28 @@ class MotivationController extends ChangeNotifier {
     if (!await validateRecoveryCode(normalizedRecovery)) {
       throw ArgumentError('Recovery code is incorrect.');
     }
-    _appPasscode = normalizedPasscode;
-    await _database.saveSetting('appPasscode', normalizedPasscode);
+    _appPasscodeHash = hashSecret(normalizedPasscode);
+    await _database.saveSetting('appPasscode', _appPasscodeHash);
   }
 
   Future<void> clearAppPasscode() async {
-    _appPasscode = '';
-    _appRecoveryCode = '';
+    _appPasscodeHash = '';
+    _appRecoveryCodeHash = '';
     await _database.saveSetting('appPasscode', null);
     await _database.saveSetting('appRecoveryCode', null);
+  }
+
+  /// Reads a stored secret, hashing (and re-saving) legacy plain-text values
+  /// written by versions before hashing was introduced.
+  Future<String> _loadSecretHash(
+    Map<String, Object?> settings,
+    String key,
+  ) async {
+    final stored = (settings[key] as String? ?? '').trim();
+    if (stored.isEmpty || isHashedSecret(stored)) return stored;
+    final hashed = hashSecret(stored);
+    await _database.saveSetting(key, hashed);
+    return hashed;
   }
 
   /// One-time seed for the 9×9 Life Grid: renames/extends categories into

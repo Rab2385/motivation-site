@@ -84,12 +84,10 @@ class _LoginGateState extends State<LoginGate> {
     }
   }
 
-  void _showRecoveryCodeDialog({String? codeOverride}) {
-    final code =
-        codeOverride ??
-        (_recoveryCode.isNotEmpty
-            ? _recoveryCode
-            : widget.controller.appRecoveryCode);
+  /// Shown once, right after the passcode is created. Only a hash is stored,
+  /// so the code can't be displayed again later.
+  void _showRecoveryCodeDialog() {
+    final code = _recoveryCode;
     if (code.isEmpty) return;
 
     showDialog<void>(
@@ -98,9 +96,21 @@ class _LoginGateState extends State<LoginGate> {
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.card,
         title: const Text('Recovery code'),
-        content: SelectableText(
-          code,
-          style: const TextStyle(fontFamilyFallback: AppTheme.mono),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SelectableText(
+              code,
+              style: const TextStyle(fontFamilyFallback: AppTheme.mono),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Write it down now. It resets a forgotten passcode and '
+              "won't be shown again.",
+              style: TextStyle(color: AppTheme.textMid),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -315,12 +325,6 @@ class _LoginGateState extends State<LoginGate> {
                     ),
                     if (_passcodeExists) ...[
                       const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: () => _showRecoveryCodeDialog(
-                          codeOverride: widget.controller.appRecoveryCode,
-                        ),
-                        child: const Text('View recovery code'),
-                      ),
                       TextButton(
                         onPressed: _showForgotPasswordDialog,
                         child: const Text('Forgot passcode?'),
