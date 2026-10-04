@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
@@ -26,7 +25,6 @@ import '../models/weight_entry.dart';
 import '../services/backup_service.dart';
 import '../services/plan_service.dart';
 import '../util/dates.dart';
-import '../util/passcode_hash.dart';
 
 /// The single in-memory hub. Holds the loaded lists, exposes read selectors
 /// backed by `lib/domain/`, and forwards every write to [PlanService].
@@ -50,14 +48,9 @@ class MotivationController extends ChangeNotifier {
   List<int> _dayTargetXp = List.of(defaultDayTargetXp);
   String _userName = '';
   DateTime? _userBirthday;
-  // Salted hashes (see util/passcode_hash.dart), never the plain values.
-  String _appPasscodeHash = '';
-  String _appRecoveryCodeHash = '';
   String _lastRolloverKey = '';
   final Set<String> _dismissedOverloadHints = {};
 
-  bool get hasAppPasscode => _appPasscodeHash.isNotEmpty;
-  bool get hasAppRecoveryCode => _appRecoveryCodeHash.isNotEmpty;
   String get userName => _userName.trim();
   DateTime? get userBirthday => _userBirthday;
   bool get hasUserName => userName.isNotEmpty;
@@ -142,8 +135,10 @@ class MotivationController extends ChangeNotifier {
     _userBirthday = birthdayRaw != null && birthdayRaw.isNotEmpty
         ? DateTime.tryParse(birthdayRaw)
         : null;
-    _appPasscodeHash = await _loadSecretHash(settings, 'appPasscode');
-    _appRecoveryCodeHash = await _loadSecretHash(settings, 'appRecoveryCode');
+    // The passcode lock was removed; drop what older versions stored.
+    for (final key in const ['appPasscode', 'appRecoveryCode']) {
+      if (settings.containsKey(key)) await _database.saveSetting(key, null);
+    }
     final storedTargets = settings['dayTargetXp'];
     if (storedTargets is List && storedTargets.length == 7) {
       _dayTargetXp = [for (final t in storedTargets) (t as num).toInt()];
@@ -231,71 +226,6 @@ class MotivationController extends ChangeNotifier {
         await _database.deleteOccurrences(occurrenceIds);
       }
     }
-  }
-
-  String generateRecoveryCode() {
-    final random = Random.secure();
-    final first = random.nextInt(900000) + 100000;
-    final second = random.nextInt(900000) + 100000;
-    return 'QUEST-$first-$second';
-  }
-
-  Future<void> setAppPasscode(String passcode, {String? recoveryCode}) async {
-    final normalized = passcode.trim();
-    if (normalized.isEmpty) return;
-    final code = (recoveryCode ?? generateRecoveryCode()).trim();
-    _appPasscodeHash = hashSecret(normalized);
-    _appRecoveryCodeHash = hashSecret(code);
-    await _database.saveSetting('appPasscode', _appPasscodeHash);
-    await _database.saveSetting('appRecoveryCode', _appRecoveryCodeHash);
-  }
-
-  Future<bool> validateAppPasscode(String passcode) async {
-    final normalized = passcode.trim();
-    return _appPasscodeHash.isNotEmpty &&
-        verifySecret(normalized, _appPasscodeHash);
-  }
-
-  Future<bool> validateRecoveryCode(String recoveryCode) async {
-    final normalized = recoveryCode.trim();
-    return _appRecoveryCodeHash.isNotEmpty &&
-        verifySecret(normalized, _appRecoveryCodeHash);
-  }
-
-  Future<void> resetAppPasscode({
-    required String recoveryCode,
-    required String newPasscode,
-  }) async {
-    final normalizedRecovery = recoveryCode.trim();
-    final normalizedPasscode = newPasscode.trim();
-    if (normalizedRecovery.isEmpty || normalizedPasscode.isEmpty) {
-      throw ArgumentError('Recovery code and new passcode are required.');
-    }
-    if (!await validateRecoveryCode(normalizedRecovery)) {
-      throw ArgumentError('Recovery code is incorrect.');
-    }
-    _appPasscodeHash = hashSecret(normalizedPasscode);
-    await _database.saveSetting('appPasscode', _appPasscodeHash);
-  }
-
-  Future<void> clearAppPasscode() async {
-    _appPasscodeHash = '';
-    _appRecoveryCodeHash = '';
-    await _database.saveSetting('appPasscode', null);
-    await _database.saveSetting('appRecoveryCode', null);
-  }
-
-  /// Reads a stored secret, hashing (and re-saving) legacy plain-text values
-  /// written by versions before hashing was introduced.
-  Future<String> _loadSecretHash(
-    Map<String, Object?> settings,
-    String key,
-  ) async {
-    final stored = (settings[key] as String? ?? '').trim();
-    if (stored.isEmpty || isHashedSecret(stored)) return stored;
-    final hashed = hashSecret(stored);
-    await _database.saveSetting(key, hashed);
-    return hashed;
   }
 
   /// One-time seed for the 9×9 Life Grid: renames/extends categories into

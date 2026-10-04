@@ -13,16 +13,17 @@ class BackupService {
   final MotivationDatabase _db;
 
   static const int formatVersion = 1;
+  static const String _appVersion = '0.1.0';
 
-  /// Settings that belong to this device and never travel in a backup file:
-  /// the passcode/recovery-code hashes, and the import safety copy (which
-  /// would otherwise nest a full older backup inside every export).
-  static const Set<String> deviceOnlySettings = {
+  /// Settings that never travel in a backup file: the passcode and recovery
+  /// code left behind by the removed lock screen (stored in plain text by
+  /// older versions), and the import safety copy, which would otherwise nest
+  /// a full older backup inside every export.
+  static const Set<String> legacySettings = {
     'appPasscode',
     'appRecoveryCode',
     '__safetyBackup',
   };
-  static const String _appVersion = '0.1.0';
 
   Future<String> exportJson() async {
     final data = await _db.exportData();
@@ -30,7 +31,7 @@ class BackupService {
     if (settings is Map) {
       data['settings'] = {
         for (final entry in settings.entries)
-          if (!deviceOnlySettings.contains(entry.key)) entry.key: entry.value,
+          if (!legacySettings.contains(entry.key)) entry.key: entry.value,
       };
     }
     final envelope = {
@@ -72,13 +73,8 @@ class BackupService {
 
   /// Imports a validated envelope. Writes the current data to
   /// `settings['__safetyBackup']` first.
-  ///
-  /// The device's passcode is kept as it is: a backup never sets, replaces
-  /// or removes it, even an older backup that still carries one.
   Future<void> importValidated(Map<String, Object?> envelope) async {
     final current = await _db.exportData();
-    final currentSettings =
-        (current['settings'] as Map?)?.cast<String, Object?>() ?? const {};
     final safetyBackup = jsonEncode({
       'createdAt': DateTime.now().toIso8601String(),
       'data': current,
@@ -91,11 +87,7 @@ class BackupService {
     final settings = Map<String, Object?>.of(
       (data['settings'] as Map?)?.cast<String, Object?>() ?? const {},
     );
-    settings.removeWhere((key, _) => deviceOnlySettings.contains(key));
-    for (final key in const ['appPasscode', 'appRecoveryCode']) {
-      final keep = currentSettings[key];
-      if (keep != null) settings[key] = keep;
-    }
+    settings.removeWhere((key, _) => legacySettings.contains(key));
     settings['__safetyBackup'] = safetyBackup;
     data['settings'] = settings;
     await _db.replaceAll(data);
