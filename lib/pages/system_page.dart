@@ -1,8 +1,13 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../domain/backup_reminder.dart';
 import '../domain/progression.dart';
 import '../l10n/app_text.dart';
+import '../services/backup_file.dart';
 import '../state/motivation_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/category_editor_sheet.dart';
@@ -509,13 +514,62 @@ class _DataTab extends StatelessWidget {
           title: AppText.backup,
           children: [
             _SettingRow(
-              title: AppText.exportBackup,
-              hint: 'copy the whole database as json.',
-              trailing: OutlinedButton(
-                onPressed: () => _export(context),
-                child: const Text('export'),
+              title: AppText.downloadBackup,
+              hint: AppText.backupDownloadHint,
+              trailing: Wrap(
+                spacing: 6,
+                children: [
+                  FilledButton(
+                    onPressed: () => _download(context),
+                    child: const Text('download'),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => _export(context),
+                    child: const Text(AppText.copyBackupJson),
+                  ),
+                ],
               ),
             ),
+            _SettingRow(
+              title: AppText.lastBackupLabel,
+              trailing: Text(
+                controller.lastBackupAt == null
+                    ? AppText.neverBackedUp
+                    : _formatBackupTime(controller.lastBackupAt!),
+                style: TextStyle(
+                  fontFamilyFallback: AppTheme.mono,
+                  fontSize: 12,
+                  color: controller.lastBackupAt == null
+                      ? AppTheme.amberBright
+                      : AppTheme.textHigh,
+                ),
+              ),
+            ),
+            _SettingRow(
+              title: AppText.backupReminderLabel,
+              hint: AppText.backupReminderHint,
+              trailing: DropdownButton<int>(
+                value: backupReminderChoices.contains(
+                  controller.backupReminderDays,
+                )
+                    ? controller.backupReminderDays
+                    : defaultBackupReminderDays,
+                underline: const SizedBox.shrink(),
+                dropdownColor: AppTheme.card,
+                items: [
+                  for (final days in backupReminderChoices)
+                    DropdownMenuItem<int>(
+                      value: days,
+                      child: Text(backupReminderLabel(days)),
+                    ),
+                ],
+                onChanged: (days) {
+                  if (days != null) controller.setBackupReminderDays(days);
+                },
+              ),
+            ),
+            if (kIsWeb) const _PersistentStorageRow(),
+            _BackupSizeRow(controller: controller),
             _SettingRow(
               title: AppText.importBackup,
               hint: 'replaces all local data.',
@@ -541,6 +595,20 @@ class _DataTab extends StatelessWidget {
     );
   }
 
+  Future<void> _download(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final location = await controller.downloadBackup();
+      messenger.showSnackBar(
+        SnackBar(content: Text('${AppText.backupSavedTo} $location')),
+      );
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('${AppText.backupFailed} $error')),
+      );
+    }
+  }
+
   Future<void> _export(BuildContext context) async {
     final json = await controller.exportBackupJson();
     if (!context.mounted) return;
@@ -564,6 +632,7 @@ class _DataTab extends StatelessWidget {
           TextButton(
             onPressed: () {
               Clipboard.setData(ClipboardData(text: json));
+              controller.markBackedUp();
               Navigator.pop(context);
             },
             child: const Text('copy'),
@@ -639,6 +708,128 @@ class _DataTab extends StatelessWidget {
       ),
     );
     if (confirmed == true) await controller.clearAllData();
+  }
+}
+
+String _formatBackupTime(DateTime at) {
+  final local = at.toLocal();
+  final month = AppText.monthLong[local.month - 1].substring(0, 3).toLowerCase();
+  final hh = local.hour.toString().padLeft(2, '0');
+  final mm = local.minute.toString().padLeft(2, '0');
+  return '${local.day} $month ${local.year} $hh:$mm';
+}
+
+/// Web only: whether the browser promised not to evict the IndexedDB data,
+/// with a button to ask for it.
+class _PersistentStorageRow extends StatefulWidget {
+  const _PersistentStorageRow();
+
+  @override
+  State<_PersistentStorageRow> createState() => _PersistentStorageRowState();
+}
+
+class _PersistentStorageRowState extends State<_PersistentStorageRow> {
+  bool? _persistent;
+  bool _asked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    isStoragePersistent().then((value) {
+      if (mounted) setState(() => _persistent = value);
+    });
+  }
+
+  Future<void> _request() async {
+    final granted = await requestPersistentStorage();
+    if (mounted) {
+      setState(() {
+        _persistent = granted;
+        _asked = true;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget trailing;
+    if (_persistent == true) {
+      trailing = const Text(
+        AppText.persistentStorageGranted,
+        style: TextStyle(
+          fontFamilyFallback: AppTheme.mono,
+          fontSize: 12,
+          color: AppTheme.successAccent,
+        ),
+      );
+    } else if (_asked) {
+      trailing = const Text(
+        AppText.persistentStorageDenied,
+        style: TextStyle(
+          fontFamilyFallback: AppTheme.mono,
+          fontSize: 12,
+          color: AppTheme.amberBright,
+        ),
+      );
+    } else {
+      trailing = OutlinedButton(
+        onPressed: _request,
+        child: const Text(AppText.persistentStorageRequest),
+      );
+    }
+    return _SettingRow(
+      title: AppText.persistentStorageLabel,
+      hint: AppText.persistentStorageHint,
+      trailing: trailing,
+    );
+  }
+}
+
+/// Record count and backup size, computed from an export when the tab opens.
+class _BackupSizeRow extends StatefulWidget {
+  const _BackupSizeRow({required this.controller});
+
+  final MotivationController controller;
+
+  @override
+  State<_BackupSizeRow> createState() => _BackupSizeRowState();
+}
+
+class _BackupSizeRowState extends State<_BackupSizeRow> {
+  late final Future<String> _export = widget.controller.exportBackupJson();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String>(
+      future: _export,
+      builder: (context, snapshot) {
+        final json = snapshot.data;
+        final String label;
+        if (json == null) {
+          label = '…';
+        } else {
+          final data = (jsonDecode(json) as Map)['data'] as Map;
+          var records = 0;
+          for (final value in data.values) {
+            if (value is List) records += value.length;
+            if (value is Map) records += value.length;
+          }
+          final kb = (utf8.encode(json).length / 1024).ceil();
+          label = '$records · $kb KB';
+        }
+        return _SettingRow(
+          title: AppText.backupSizeLabel,
+          trailing: Text(
+            label,
+            style: const TextStyle(
+              fontFamilyFallback: AppTheme.mono,
+              fontSize: 12,
+              color: AppTheme.textMid,
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 

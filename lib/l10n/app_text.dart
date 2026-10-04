@@ -216,6 +216,27 @@ class AppText {
   static const exportBackup = 'export backup';
   static const importBackup = 'import backup';
   static const clearData = 'clear all data';
+  static const downloadBackup = 'download backup';
+  static const copyBackupJson = 'copy json';
+  static const backupDownloadHint = 'save the whole database as a dated .json file.';
+  static const backupSavedTo = 'backup saved:';
+  static const backupFailed = 'backup failed:';
+  static const lastBackupLabel = 'last backup';
+  static const neverBackedUp = 'never';
+  static const backupReminderLabel = 'backup reminder';
+  static const backupReminderHint = 'show a nudge on home when the last backup is older than this.';
+  static const persistentStorageLabel = 'persistent storage';
+  static const persistentStorageHint =
+      'asks the browser not to clear this data when space runs low.';
+  static const persistentStorageGranted = '✓ granted';
+  static const persistentStorageRequest = 'request';
+  static const persistentStorageDenied = 'not granted — keep backups';
+  static const backupSizeLabel = 'records';
+  static const backupNudgeNever = 'no backup yet';
+  static const remindInAWeek = 'remind me in a week';
+  static const backupNudgeWeb =
+      'your data lives only in this browser. clearing site data erases it.';
+  static const backupNudgeNative = 'your data lives only on this computer.';
   static const clearDataWarning =
       'This deletes every habit, task and all progress. Export a backup first.';
 

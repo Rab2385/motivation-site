@@ -17,12 +17,21 @@ class BackupService {
 
   /// Settings that never travel in a backup file: the passcode and recovery
   /// code left behind by the removed lock screen (stored in plain text by
-  /// older versions), and the import safety copy, which would otherwise nest
-  /// a full older backup inside every export.
-  static const Set<String> legacySettings = {
+  /// older versions), the import safety copy (which would otherwise nest a
+  /// full older backup inside every export), and this device's backup
+  /// bookkeeping.
+  static const Set<String> localOnlySettings = {
     'appPasscode',
     'appRecoveryCode',
     '__safetyBackup',
+    ..._keptOnImport,
+  };
+
+  /// Local-only settings whose current value survives an import, so an old
+  /// backup can't make the app think it was backed up back then.
+  static const Set<String> _keptOnImport = {
+    'lastBackupAt',
+    'backupSnoozedUntil',
   };
 
   Future<String> exportJson() async {
@@ -31,7 +40,7 @@ class BackupService {
     if (settings is Map) {
       data['settings'] = {
         for (final entry in settings.entries)
-          if (!legacySettings.contains(entry.key)) entry.key: entry.value,
+          if (!localOnlySettings.contains(entry.key)) entry.key: entry.value,
       };
     }
     final envelope = {
@@ -75,6 +84,8 @@ class BackupService {
   /// `settings['__safetyBackup']` first.
   Future<void> importValidated(Map<String, Object?> envelope) async {
     final current = await _db.exportData();
+    final currentSettings =
+        (current['settings'] as Map?)?.cast<String, Object?>() ?? const {};
     final safetyBackup = jsonEncode({
       'createdAt': DateTime.now().toIso8601String(),
       'data': current,
@@ -87,7 +98,11 @@ class BackupService {
     final settings = Map<String, Object?>.of(
       (data['settings'] as Map?)?.cast<String, Object?>() ?? const {},
     );
-    settings.removeWhere((key, _) => legacySettings.contains(key));
+    settings.removeWhere((key, _) => localOnlySettings.contains(key));
+    for (final key in _keptOnImport) {
+      final keep = currentSettings[key];
+      if (keep != null) settings[key] = keep;
+    }
     settings['__safetyBackup'] = safetyBackup;
     data['settings'] = settings;
     await _db.replaceAll(data);

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../data/motivation_database.dart';
 import '../domain/achievements.dart';
+import '../domain/backup_reminder.dart';
 import '../domain/difficulty.dart';
 import '../domain/habit_section.dart';
 import '../domain/habit_target.dart';
@@ -22,6 +23,7 @@ import '../models/task_definition.dart';
 import '../models/task_occurrence.dart';
 import '../models/week_template.dart';
 import '../models/weight_entry.dart';
+import '../services/backup_file.dart';
 import '../services/backup_service.dart';
 import '../services/plan_service.dart';
 import '../util/dates.dart';
@@ -29,10 +31,13 @@ import '../util/dates.dart';
 /// The single in-memory hub. Holds the loaded lists, exposes read selectors
 /// backed by `lib/domain/`, and forwards every write to [PlanService].
 class MotivationController extends ChangeNotifier {
-  MotivationController(this._database) : _backup = BackupService(_database);
+  MotivationController(this._database, {BackupFileSaver? saveFile})
+    : _backup = BackupService(_database),
+      _saveFile = saveFile ?? saveBackupFile;
 
   final MotivationDatabase _database;
   final BackupService _backup;
+  final BackupFileSaver _saveFile;
   late PlanService _plan; // rebuilt by initialize(), e.g. after a backup import
 
   final List<TaskCategory> _categories = [];
@@ -64,6 +69,9 @@ class MotivationController extends ChangeNotifier {
   int _perfectDayBonus = 50;
   bool _streakProtection = true;
   bool _dailyReminder = false;
+  DateTime? _lastBackupAt;
+  DateTime? _backupSnoozedUntil;
+  int _backupReminderDays = defaultBackupReminderDays;
   String _reminderTime = '09:00';
   bool _motivationMessages = true;
   bool _showAtmosphere = true;
@@ -150,6 +158,13 @@ class MotivationController extends ChangeNotifier {
         (settings['perfectDayBonus'] as num?)?.toInt().clamp(0, 500) ?? 50;
     _streakProtection = settings['streakProtection'] as bool? ?? true;
     _dailyReminder = settings['dailyReminder'] as bool? ?? false;
+    _lastBackupAt = DateTime.tryParse(settings['lastBackupAt'] as String? ?? '');
+    _backupSnoozedUntil = DateTime.tryParse(
+      settings['backupSnoozedUntil'] as String? ?? '',
+    );
+    _backupReminderDays =
+        (settings['backupReminderDays'] as num?)?.toInt() ??
+        defaultBackupReminderDays;
     _reminderTime = settings['reminderTime'] as String? ?? '09:00';
     _motivationMessages = settings['motivationMessages'] as bool? ?? true;
     _showAtmosphere = settings['showAtmosphere'] as bool? ?? true;
@@ -1568,6 +1583,60 @@ class MotivationController extends ChangeNotifier {
   // ---- Backup --------------------------------------------------------
 
   Future<String> exportBackupJson() => _backup.exportJson();
+
+  DateTime? get lastBackupAt => _lastBackupAt;
+  int get backupReminderDays => _backupReminderDays;
+
+  /// Date of the earliest completion: how long there has been data to lose.
+  DateTime? get firstActivityAt {
+    DateTime? first;
+    for (final occurrence in _occurrences) {
+      final at = occurrence.completion?.completedAt;
+      if (at != null && (first == null || at.isBefore(first))) first = at;
+    }
+    return first;
+  }
+
+  bool isBackupNudgeDueAt(DateTime now) => isBackupNudgeDue(
+    now: now,
+    reminderDays: _backupReminderDays,
+    lastBackupAt: _lastBackupAt,
+    snoozedUntil: _backupSnoozedUntil,
+    firstActivityAt: firstActivityAt,
+  );
+
+  /// Saves a dated backup file and records the backup. Returns where the
+  /// file went, for a confirmation message.
+  Future<String> downloadBackup() async {
+    final json = await exportBackupJson();
+    final now = DateTime.now();
+    final location = await _saveFile('quest-backup-${dayKey(now)}.json', json);
+    await markBackedUp(now);
+    return location;
+  }
+
+  /// Records a backup taken at [at] (download or copied JSON) and clears any
+  /// snooze on the nudge.
+  Future<void> markBackedUp([DateTime? at]) async {
+    _lastBackupAt = at ?? DateTime.now();
+    _backupSnoozedUntil = null;
+    await _database.saveSetting('backupSnoozedUntil', null);
+    await _setAndSave('lastBackupAt', _lastBackupAt!.toIso8601String());
+  }
+
+  /// "Remind me in a week" on the home nudge.
+  Future<void> snoozeBackupNudge([DateTime? now]) async {
+    _backupSnoozedUntil = (now ?? DateTime.now()).add(const Duration(days: 7));
+    await _setAndSave(
+      'backupSnoozedUntil',
+      _backupSnoozedUntil!.toIso8601String(),
+    );
+  }
+
+  Future<void> setBackupReminderDays(int days) async {
+    _backupReminderDays = days < 0 ? 0 : days;
+    await _setAndSave('backupReminderDays', _backupReminderDays);
+  }
 
   Future<void> importBackupJson(String raw) async {
     final envelope = _backup.parseAndValidate(raw);

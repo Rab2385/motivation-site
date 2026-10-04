@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../domain/life_grid.dart';
@@ -90,6 +91,10 @@ class HabitsHomePage extends StatelessWidget {
                       const SizedBox(height: 14),
                       _WeeklyReviewCard(controller: controller),
                     ],
+                    if (controller.isBackupNudgeDueAt(DateTime.now())) ...[
+                      const SizedBox(height: 14),
+                      _BackupNudgeCard(controller: controller),
+                    ],
                     const SizedBox(height: 14),
                     TerminalPanel(
                       child: _NinetyDayFocusPanel(controller: controller),
@@ -117,6 +122,10 @@ class HabitsHomePage extends StatelessWidget {
             if (showWeeklyReview) ...[
               const SizedBox(height: 14),
               _WeeklyReviewCard(controller: controller),
+            ],
+            if (controller.isBackupNudgeDueAt(DateTime.now())) ...[
+              const SizedBox(height: 14),
+              _BackupNudgeCard(controller: controller),
             ],
             const SizedBox(height: 14),
             _WeekStrip(
@@ -172,6 +181,10 @@ class _LeftColumn extends StatelessWidget {
           if (controller.isWeeklyReviewDueFor(controller.today)) ...[
             const SizedBox(height: 14),
             _WeeklyReviewCard(controller: controller),
+          ],
+          if (controller.isBackupNudgeDueAt(DateTime.now())) ...[
+            const SizedBox(height: 14),
+            _BackupNudgeCard(controller: controller),
           ],
           const SizedBox(height: 14),
           TerminalPanel(child: _NinetyDayFocusPanel(controller: controller)),
@@ -313,6 +326,101 @@ class _WeeklyReviewCard extends StatelessWidget {
               icon: const Icon(Icons.refresh_outlined, size: 16),
               label: const Text('review'),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shown when the last backup is older than the chosen interval (see
+/// `domain/backup_reminder.dart`).
+class _BackupNudgeCard extends StatelessWidget {
+  const _BackupNudgeCard({required this.controller});
+
+  final MotivationController controller;
+
+  Future<void> _download(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final location = await controller.downloadBackup();
+      messenger.showSnackBar(
+        SnackBar(content: Text('${AppText.backupSavedTo} $location')),
+      );
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('${AppText.backupFailed} $error')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final last = controller.lastBackupAt;
+    final days = last == null
+        ? null
+        : dateOnly(DateTime.now()).difference(dateOnly(last)).inDays;
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.card,
+        border: Border.all(color: AppTheme.amberDim),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text.rich(
+            TextSpan(
+              style: const TextStyle(
+                fontFamilyFallback: AppTheme.mono,
+                color: AppTheme.textHigh,
+                fontSize: 12.5,
+              ),
+              children: [
+                const TextSpan(
+                  text: '! ',
+                  style: TextStyle(
+                    color: AppTheme.amberBright,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (days == null)
+                  const TextSpan(
+                    text: AppText.backupNudgeNever,
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  )
+                else ...[
+                  const TextSpan(text: 'last backup '),
+                  TextSpan(
+                    text: days == 1 ? '1 day ago' : '$days days ago',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '// ${kIsWeb ? AppText.backupNudgeWeb : AppText.backupNudgeNative}',
+            style: AppTheme.comment.copyWith(fontSize: 11.5),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              FilledButton.icon(
+                onPressed: () => _download(context),
+                icon: const Icon(Icons.download_outlined, size: 16),
+                label: const Text(AppText.downloadBackup),
+              ),
+              TextButton(
+                onPressed: controller.snoozeBackupNudge,
+                child: const Text(AppText.remindInAWeek),
+              ),
+            ],
           ),
         ],
       ),
